@@ -12326,12 +12326,78 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
     ?>
     <section class="mle-batch-cleanup" id="<?php echo $__advEvidencePanelId; ?>">
       <div class="mle-batch-cleanup__title">Run Selection for Better Advice</div>
-      <p>LottoExpert reviewed your saved runs and recommends which ones should guide future advice. Keeping stronger runs and removing weaker runs from advice helps narrow toward the most consistent setup.</p>
-      <div class="mle-run-selection-summary">
-        <span>Use for future advice: <?php echo count((array)$__advClKeep); ?></span>
-        <span>Keep for review: <?php echo count((array)$__advClReview); ?></span>
-        <span>Do not use for advice: <?php echo count((array)$__advClArch); ?></span>
-      </div>
+      <p>LottoExpert has reviewed your saved runs and sorted them into three groups based on how well their numbers matched actual draws. Review each group below, then apply or leave as is.</p>
+
+      <?php
+        // Helper: render a compact run summary line for the run-selection groups
+        $__rsRenderRun = function(array $__r) {
+          $__rsLabel   = htmlspecialchars((string)($__r['label']        ?? 'Saved run'), ENT_QUOTES, 'UTF-8');
+          $__rsMethod  = htmlspecialchars((string)($__r['method_label'] ?? ''), ENT_QUOTES, 'UTF-8');
+          $__rsDate    = htmlspecialchars((string)($__r['draw_date']    ?? ''), ENT_QUOTES, 'UTF-8');
+          $__rsHits    = (int)($__r['total_hits']  ?? 0);
+          $__rsDone    = !empty($__r['completed']);
+          $__rsNums    = mleAdvisoryRenderBallSetHtml(
+            (array)($__r['predicted']       ?? array()),
+            (array)($__r['predicted_extra'] ?? array()),
+            (array)($__r['matches']         ?? array()),
+            (array)($__r['extra_matches']   ?? array()),
+            false
+          );
+          echo '<div class="mle-rs-run">';
+          echo '<div class="mle-rs-run__info">';
+          echo '<strong>' . $__rsLabel . '</strong>';
+          echo '<span>' . $__rsMethod . ($__rsDate !== '' ? ' &mdash; draw ' . $__rsDate : '') . '</span>';
+          if ($__rsDone) {
+            echo '<span class="mle-rs-run__hits">' . $__rsHits . ' hit' . ($__rsHits !== 1 ? 's' : '') . ' matched</span>';
+          } else {
+            echo '<span class="mle-rs-run__hits mle-rs-run__hits--upcoming">Upcoming draw</span>';
+          }
+          echo '</div>';
+          echo '<div class="mle-rs-run__balls">' . $__rsNums . '</div>';
+          echo '</div>';
+        };
+      ?>
+
+      <div class="mle-rs-groups">
+
+        <?php if (!empty($__advClKeep)): ?>
+        <div class="mle-rs-group mle-rs-group--keep">
+          <div class="mle-rs-group__header">
+            <span class="mle-rs-group__badge mle-rs-group__badge--keep">&#10003; Use for future advice &mdash; <?php echo count($__advClKeep); ?> run<?php echo count($__advClKeep) !== 1 ? 's' : ''; ?></span>
+            <p class="mle-rs-group__reason">These are your <strong>strongest runs</strong>. They matched the most actual draw numbers and will continue to guide the next prediction. Keeping them tells LottoExpert &ldquo;these approaches worked best.&rdquo;</p>
+          </div>
+          <div class="mle-rs-group__runs">
+            <?php foreach ($__advClKeep as $__r): $__rsRenderRun($__r); endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($__advClReview)): ?>
+        <div class="mle-rs-group mle-rs-group--review">
+          <div class="mle-rs-group__header">
+            <span class="mle-rs-group__badge mle-rs-group__badge--review">&#9711; Keep for review &mdash; <?php echo count($__advClReview); ?> run<?php echo count($__advClReview) !== 1 ? 's' : ''; ?></span>
+            <p class="mle-rs-group__reason">These are <strong>moderate performers</strong>. They had some hits but not enough to lead. They stay on record so you can compare them later but they will not steer the next advice.</p>
+          </div>
+          <div class="mle-rs-group__runs">
+            <?php foreach ($__advClReview as $__r): $__rsRenderRun($__r); endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($__advClArch)): ?>
+        <div class="mle-rs-group mle-rs-group--archive">
+          <div class="mle-rs-group__header">
+            <span class="mle-rs-group__badge mle-rs-group__badge--archive">&#215; Do not use for advice &mdash; <?php echo count($__advClArch); ?> run<?php echo count($__advClArch) !== 1 ? 's' : ''; ?></span>
+            <p class="mle-rs-group__reason">These runs had the <strong>fewest hits</strong> against actual draws. Removing them from advice keeps the focus on what has been working. You can still view them here; they are not deleted.</p>
+          </div>
+          <div class="mle-rs-group__runs">
+            <?php foreach ($__advClArch as $__r): $__rsRenderRun($__r); endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+      </div><!-- /.mle-rs-groups -->
+
       <?php if (!MLE_DEMO_MODE): ?>
       <form method="post" class="mle-advisory-actions">
         <input type="hidden" name="mle_action" value="apply_evidence_choices">
@@ -12350,13 +12416,84 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 
     <button type="button" class="mle-section-toggle" aria-expanded="false" aria-controls="<?php echo $__advRunsBodyId; ?>"><span>View Saved Predictions</span></button>
     <div id="<?php echo $__advRunsBodyId; ?>" class="mle-section-body mle-saved-runs-panel" style="display:none" aria-hidden="true">
-      <?php foreach ((array)($__advPredSum['individual_runs'] ?? array()) as $__spRun):
-        $__spLabel = htmlspecialchars((string)($__spRun['label'] ?? ('Saved run #' . (int)($__spRun['id'] ?? 0))), ENT_QUOTES, 'UTF-8');
-        $__spMethod = htmlspecialchars(mleAdvisoryMethodLabel((string)($__spRun['source'] ?? '')), ENT_QUOTES, 'UTF-8');
-        $__spNums = mleAdvisoryRenderBallSetHtml(mylottoexpertParseNumberCsv($__spRun['main_numbers'] ?? '', true), mylottoexpertParseNumberCsv($__spRun['extra_ball_numbers'] ?? '', true), array(), array(), false);
+      <?php
+        $__spAllRuns = array_merge(
+          (array)($__advVisual['recent']   ?? array()),
+          (array)($__advVisual['older']    ?? array()),
+          (array)($__advVisual['upcoming'] ?? array())
+        );
+        if (empty($__spAllRuns)):
       ?>
-      <div class="mle-adv-run-item"><span class="mle-adv-run-item__name"><?php echo $__spLabel; ?></span><span><?php echo $__spMethod; ?></span><span><?php echo $__spNums; ?></span></div>
-      <?php endforeach; ?>
+        <div class="mle-visual-empty">No saved predictions for this lottery yet.</div>
+      <?php else: ?>
+        <div class="mle-sp-run-list">
+        <?php foreach ($__spAllRuns as $__spRun):
+          $__spLabel    = htmlspecialchars((string)($__spRun['label']        ?? 'Saved run'), ENT_QUOTES, 'UTF-8');
+          $__spMethod   = htmlspecialchars((string)($__spRun['method_label'] ?? ''), ENT_QUOTES, 'UTF-8');
+          $__spDate     = htmlspecialchars((string)($__spRun['draw_date']    ?? ''), ENT_QUOTES, 'UTF-8');
+          $__spSavedId  = (int)($__spRun['saved_id'] ?? 0);
+          $__spHits     = (int)($__spRun['total_hits']  ?? 0);
+          $__spMainHits = (int)($__spRun['main_hits']   ?? 0);
+          $__spExtraHits= (int)($__spRun['extra_hits']  ?? 0);
+          $__spCompleted= !empty($__spRun['completed']);
+          $__spNums     = mleAdvisoryRenderBallSetHtml(
+            (array)($__spRun['predicted']       ?? array()),
+            (array)($__spRun['predicted_extra'] ?? array()),
+            (array)($__spRun['matches']         ?? array()),
+            (array)($__spRun['extra_matches']   ?? array()),
+            false
+          );
+          $__spActual   = ($__spCompleted && (!empty($__spRun['actual']) || !empty($__spRun['actual_extra'])))
+            ? mleAdvisoryRenderBallSetHtml(
+                (array)($__spRun['actual']        ?? array()),
+                (array)($__spRun['actual_extra']  ?? array()),
+                (array)($__spRun['matches']       ?? array()),
+                (array)($__spRun['extra_matches'] ?? array()),
+                true
+              )
+            : '';
+        ?>
+        <div class="mle-sp-run-card<?php echo $__spCompleted ? ' mle-sp-run-card--scored' : ''; ?>">
+          <div class="mle-sp-run-card__header">
+            <div class="mle-sp-run-card__meta">
+              <strong><?php echo $__spLabel; ?></strong>
+              <span><?php echo $__spMethod; ?><?php echo $__spDate !== '' ? ' &mdash; ' . $__spDate : ''; ?></span>
+            </div>
+            <?php if ($__spCompleted): ?>
+            <div class="mle-sp-run-card__hits">
+              <strong><?php echo $__spHits; ?></strong>
+              <span>Total hits</span>
+              <?php if ($__spMainHits > 0 || $__spExtraHits > 0): ?>
+              <small><?php echo $__spMainHits; ?> main<?php echo $__spExtraHits > 0 ? ' + ' . $__spExtraHits . ' extra' : ''; ?></small>
+              <?php endif; ?>
+            </div>
+            <?php else: ?>
+            <div class="mle-sp-run-card__hits mle-sp-run-card__hits--upcoming">
+              <span>Upcoming</span>
+            </div>
+            <?php endif; ?>
+          </div>
+          <div class="mle-sp-run-card__balls">
+            <span class="mle-visual-label">Your numbers</span><?php echo $__spNums; ?>
+          </div>
+          <?php if ($__spActual !== ''): ?>
+          <div class="mle-sp-run-card__balls">
+            <span class="mle-visual-label">Actual draw</span><?php echo $__spActual; ?>
+          </div>
+          <?php endif; ?>
+          <?php if (!MLE_DEMO_MODE && $__spSavedId > 0): ?>
+          <div class="mle-sp-run-card__actions">
+            <form method="post" class="mle-inline-action mle-inline-action--delete">
+              <input type="hidden" name="delete_set" value="<?php echo $__spSavedId; ?>">
+              <?php echo \Joomla\CMS\HTML\HTMLHelper::_('form.token'); ?>
+              <button type="submit">Delete this run</button>
+            </form>
+          </div>
+          <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
     </div>
 
 
@@ -12364,10 +12501,8 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
     <?php
       $__advPlayRows = (array)($__advCard['numbers_to_play'] ?? array());
       $__advSettingsRows = (array)($__advCard['saved_settings'] ?? array());
-      $__advWheelRows = (array)($__advCard['wheel_systems'] ?? array());
       $__advPlayBodyId = 'mle-section-body-' . $__advLid . '-numbers-to-play';
       $__advSettingsBodyId = 'mle-section-body-' . $__advLid . '-saved-settings';
-      $__advWheelsBodyId = 'mle-section-body-' . $__advLid . '-wheels';
     ?>
 
     <section class="mle-lottery-roof-section">
@@ -12416,35 +12551,70 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
       </div>
     </section>
 
-    <section class="mle-lottery-roof-section">
-      <div class="mle-section-headline">
-        <div><h4>Favorite Wheeling Systems</h4><p>Compatible favorite wheel systems for this lottery based on the saved run size when available.</p></div>
-        <button type="button" class="mle-section-toggle" aria-expanded="false" aria-controls="<?php echo $__advWheelsBodyId; ?>"><span>Show Favorite Wheeling Systems</span></button>
-      </div>
-      <div id="<?php echo $__advWheelsBodyId; ?>" class="mle-section-body" style="display:none" aria-hidden="true">
-        <?php if (empty($__advWheelRows)): ?>
-          <div class="mle-visual-empty">No compatible favorite wheeling systems found for this lottery yet.</div>
-        <?php else: ?>
-          <div class="mle-card-list-grid">
-          <?php foreach ($__advWheelRows as $__wheelRow):
-            $__wheelId = htmlspecialchars((string)($__wheelRow['system_id'] ?? ''), ENT_QUOTES, 'UTF-8');
-            $__wheelPick = (int)($__wheelRow['pick_size'] ?? 0);
-            $__wheelRange = (int)($__wheelRow['number_range'] ?? 0);
-            $__wheelGames = (int)($__wheelRow['games'] ?? 0);
-          ?>
-            <div class="mle-mini-card"><strong>System <?php echo $__wheelId; ?></strong><span>Pick <?php echo $__wheelPick; ?> from <?php echo $__wheelRange; ?></span><p><?php echo $__wheelGames > 0 ? (string)$__wheelGames . ' lines/games' : 'Line count not listed'; ?></p></div>
-          <?php endforeach; ?>
-          </div>
-        <?php endif; ?>
-      </div>
-    </section>
 
     <button type="button" class="mle-section-toggle mle-advanced-only" aria-expanded="false" aria-controls="<?php echo $__advAdvancedBodyId; ?>"><span>Show Advanced Details</span></button>
     <div id="<?php echo $__advAdvancedBodyId; ?>" class="mle-section-body mle-advanced-only" style="display:none" aria-hidden="true">
-      <p>Advanced details are for checking the evidence behind the recommendation.</p>
-      <table class="mle-adv-proof-table"><thead><tr><th>Analysis</th><th>Top 10 Hits</th><th>Top 20 Hits</th><th>Avg Rank</th></tr></thead><tbody>
-      <?php foreach ((array)($__advCard['leaderboard'] ?? array()) as $__m): ?><tr><td><?php echo htmlspecialchars((string)($__m['method_label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo (int)($__m['total_hits'] ?? 0); ?></td><td><?php echo (int)($__m['avg_top20'] ?? 0); ?></td><td><?php echo htmlspecialchars((string)($__m['avg_rank'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td></tr><?php endforeach; ?>
-      </tbody></table>
+      <p>Advanced details show how each prediction method performed across all your scored runs for this lottery. Use this to see which approach has the strongest track record.</p>
+      <?php
+        $__advLbRows = (array)($__advCard['leaderboard'] ?? array());
+        if (empty($__advLbRows)):
+      ?>
+        <div class="mle-visual-empty">No scored runs yet for this lottery. Save and score at least one run to see performance data here.</div>
+      <?php else: ?>
+      <div class="mle-adv-legend">
+        <strong>Column guide:</strong>
+        <span><em>Runs</em> = number of saved runs using this analysis</span>
+        <span><em>Draws scored</em> = how many actual draws were compared</span>
+        <span><em>Total hits</em> = cumulative matched numbers across all scored draws</span>
+        <span><em>Avg hits/draw</em> = average matched numbers per completed draw</span>
+        <span><em>Top 20 hits</em> = draws where at least one number landed in the top 20 predicted</span>
+        <span><em>Avg rank</em> = average position of winning numbers in the ranked list (lower is better; 1 = top)</span>
+      </div>
+      <div class="mle-adv-proof-wrap">
+      <table class="mle-adv-proof-table">
+        <thead>
+          <tr>
+            <th>Analysis method</th>
+            <th>Runs</th>
+            <th>Draws scored</th>
+            <th>Total hits</th>
+            <th>Avg hits/draw</th>
+            <th>Top 20 hits</th>
+            <th>Avg rank</th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($__advLbRows as $__i => $__m):
+          $__mLabel     = htmlspecialchars((string)($__m['method_label'] ?? ''), ENT_QUOTES, 'UTF-8');
+          $__mRunCount  = (int)($__m['run_count']   ?? 0);
+          $__mDrawCount = (int)($__m['draw_count']  ?? 0);
+          $__mTotalHits = (int)($__m['total_hits']  ?? 0);
+          $__mAvgHits   = ($__mDrawCount > 0) ? round($__mTotalHits / $__mDrawCount, 1) : '—';
+          $__mTop20     = (int)($__m['avg_top20']   ?? 0);
+          $__mRank      = ($__m['avg_rank'] !== null && $__m['avg_rank'] !== '') ? htmlspecialchars((string)$__m['avg_rank'], ENT_QUOTES, 'UTF-8') : '—';
+          $__mScore     = (float)($__m['score']     ?? 0);
+          $__mIsTop     = ($__i === 0);
+        ?>
+        <tr class="<?php echo $__mIsTop ? 'mle-adv-proof-table__row--top' : ''; ?>">
+          <td>
+            <?php if ($__mIsTop): ?><span class="mle-adv-top-badge">&#9733; Leading</span><?php endif; ?>
+            <?php echo $__mLabel; ?>
+          </td>
+          <td><?php echo $__mRunCount > 0 ? $__mRunCount : '—'; ?></td>
+          <td><?php echo $__mDrawCount > 0 ? $__mDrawCount : '—'; ?></td>
+          <td><?php echo $__mTotalHits > 0 ? $__mTotalHits : '0'; ?></td>
+          <td><?php echo $__mAvgHits; ?></td>
+          <td><?php echo $__mTop20 > 0 ? $__mTop20 : '0'; ?></td>
+          <td><?php echo $__mRank; ?></td>
+        </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+      </div>
+      <?php if ($__advTotalDraws < 3): ?>
+      <p class="mle-adv-note">&#9432; You have <?php echo $__advTotalDraws; ?> scored draw<?php echo $__advTotalDraws !== 1 ? 's' : ''; ?> so far. Data becomes more meaningful after 5&ndash;10 completed, scored draws.</p>
+      <?php endif; ?>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -12911,6 +13081,54 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   .mle-lottery-command-hero__steps{grid-template-columns:1fr;}
   .mle-elite-cockpit .mle-next-settings-run__details{grid-template-columns:1fr !important;}
 }
+
+/* -- Saved Predictions panel (View Saved Predictions) ------------------- */
+.mle-sp-run-list{display:flex;flex-direction:column;gap:12px;margin-top:8px;}
+.mle-sp-run-card{border:1px solid rgba(127,141,170,.22);border-radius:16px;padding:14px 16px;background:#fff;box-shadow:0 4px 12px rgba(10,26,51,.04);}
+.mle-sp-run-card--scored{border-left:5px solid #20C997;}
+.mle-sp-run-card__header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.mle-sp-run-card__meta strong{display:block;color:#0A1A33;font-size:.95rem;font-weight:900;}
+.mle-sp-run-card__meta span{display:block;color:#7F8DAA;font-size:.8rem;margin-top:2px;}
+.mle-sp-run-card__hits{text-align:center;min-width:72px;}
+.mle-sp-run-card__hits strong{display:block;font-size:1.55rem;font-weight:900;line-height:1;color:#1C66FF;}
+.mle-sp-run-card__hits span{display:block;font-size:.72rem;color:#7F8DAA;text-transform:uppercase;letter-spacing:.07em;font-weight:800;}
+.mle-sp-run-card__hits small{display:block;font-size:.72rem;color:#94a3b8;margin-top:2px;}
+.mle-sp-run-card__hits--upcoming strong{font-size:.85rem;color:#94a3b8;}
+.mle-sp-run-card__hits--upcoming span{color:#94a3b8;}
+.mle-sp-run-card__balls{margin-bottom:8px;}
+.mle-sp-run-card__actions{margin-top:8px;padding-top:8px;border-top:1px solid rgba(127,141,170,.12);}
+
+/* -- Run Selection groups ----------------------------------------------- */
+.mle-rs-groups{display:flex;flex-direction:column;gap:14px;margin:14px 0;}
+.mle-rs-group{border-radius:14px;padding:14px 16px;}
+.mle-rs-group--keep{background:#f0fdf7;border:1px solid rgba(32,201,151,.4);}
+.mle-rs-group--review{background:#fffbeb;border:1px solid rgba(245,166,35,.4);}
+.mle-rs-group--archive{background:#fef2f2;border:1px solid rgba(185,28,28,.2);}
+.mle-rs-group__header{margin-bottom:10px;}
+.mle-rs-group__badge{display:inline-block;font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.07em;padding:4px 12px;border-radius:999px;margin-bottom:6px;}
+.mle-rs-group--keep   .mle-rs-group__badge{background:#D1FAE5;color:#065F46;}
+.mle-rs-group--review .mle-rs-group__badge{background:#FEF3C7;color:#92400E;}
+.mle-rs-group--archive .mle-rs-group__badge{background:#FEE2E2;color:#B91C1C;}
+.mle-rs-group__reason{margin:4px 0 0;font-size:.83rem;color:#475569;line-height:1.5;}
+.mle-rs-group__runs{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.mle-rs-run{border:1px solid rgba(127,141,170,.18);border-radius:10px;padding:10px 12px;background:#fff;}
+.mle-rs-run__info{margin-bottom:6px;}
+.mle-rs-run__info strong{display:block;font-size:.88rem;font-weight:900;color:#0A1A33;}
+.mle-rs-run__info span{display:block;font-size:.78rem;color:#7F8DAA;margin-top:1px;}
+.mle-rs-run__hits{display:inline-block;margin-top:3px;font-size:.78rem;font-weight:800;padding:2px 8px;border-radius:999px;background:#e0f2fe;color:#0369a1;}
+.mle-rs-run__hits--upcoming{background:#f1f5f9;color:#64748b;}
+.mle-rs-run__balls{margin-top:6px;}
+
+/* -- Advanced Details table --------------------------------------------- */
+.mle-adv-legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:10px 0 14px;font-size:.78rem;color:#475569;line-height:1.45;}
+.mle-adv-legend strong{display:block;color:#0A1A33;margin-bottom:4px;font-size:.82rem;}
+.mle-adv-proof-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.mle-adv-proof-table{width:100%;border-collapse:collapse;font-size:.83rem;}
+.mle-adv-proof-table th{text-align:left;padding:8px 10px;border-bottom:2px solid #e2e8f0;color:#0A1A33;font-weight:900;white-space:nowrap;}
+.mle-adv-proof-table td{padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:top;}
+.mle-adv-proof-table__row--top td{background:#f0f9ff;}
+.mle-adv-top-badge{display:inline-block;margin-right:4px;padding:2px 7px;border-radius:999px;background:#DBEAFE;color:#1e40af;font-size:.7rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;}
+.mle-adv-note{margin-top:10px;font-size:.8rem;color:#64748b;font-style:italic;}
 
 </style>
 
