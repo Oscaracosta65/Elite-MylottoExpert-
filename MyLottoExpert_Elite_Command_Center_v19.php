@@ -12554,21 +12554,6 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
               )
             : '';
 
-          // Accept button label and hidden field name per group
-          if ($__rsGroup === 'keep') {
-            $__rsFieldName  = 'keep_ids[]';
-            $__rsAcceptBtn  = '&#10003; Confirm: keep for advice';
-            $__rsAcceptCss  = 'mle-rs-accept-btn mle-rs-accept-btn--keep';
-          } elseif ($__rsGroup === 'review') {
-            $__rsFieldName  = 'watch_ids[]';
-            $__rsAcceptBtn  = '&#9711; Confirm: keep for review';
-            $__rsAcceptCss  = 'mle-rs-accept-btn mle-rs-accept-btn--review';
-          } else {
-            $__rsFieldName  = 'retire_ids[]';
-            $__rsAcceptBtn  = '&#215; Confirm: remove from advice';
-            $__rsAcceptCss  = 'mle-rs-accept-btn mle-rs-accept-btn--archive';
-          }
-
           echo '<div class="mle-rs-run">';
           // Header: label + hits
           echo '<div class="mle-rs-run__header">';
@@ -12582,15 +12567,32 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
             echo '<span class="mle-rs-run__hits mle-rs-run__hits--upcoming">Upcoming draw — not yet scored</span>';
           }
           echo '</div>';
-          // Per-run accept form (only when there is a perf record to update)
+          // Per-run action controls (allow moving this run to any status)
           if ($__rsPerfId > 0) {
-            echo '<form method="post" class="mle-rs-run__accept-form">'
-              . '<input type="hidden" name="mle_action" value="apply_evidence_choices">'
-              . '<input type="hidden" name="lottery_id" value="' . (int)$__advLid . '">'
-              . '<input type="hidden" name="' . htmlspecialchars($__rsFieldName, ENT_QUOTES, 'UTF-8') . '" value="' . $__rsPerfId . '">'
-              . $__csrfToken
-              . '<button type="submit" class="' . $__rsAcceptCss . '">' . $__rsAcceptBtn . '</button>'
-              . '</form>';
+            $__rsCurrentStatus = ($__rsGroup === 'keep') ? 'keep' : (($__rsGroup === 'review') ? 'review' : 'archive');
+            echo '<div class="mle-rs-run__actions-wrap">';
+            echo '<div class="mle-rs-run__action-help">Choose where this run should go. You can move it anytime.</div>';
+            echo '<div class="mle-rs-run__actions">';
+            foreach (array(
+              'keep'    => array('field' => 'keep_ids[]',   'label' => '&#10003; Use for future advice', 'css' => 'mle-rs-accept-btn mle-rs-accept-btn--keep', 'tip' => 'This run helps shape upcoming advice.'),
+              'review'  => array('field' => 'watch_ids[]',  'label' => '&#9711; Keep for review',        'css' => 'mle-rs-accept-btn mle-rs-accept-btn--review', 'tip' => 'This run stays saved but paused from advice.'),
+              'archive' => array('field' => 'retire_ids[]', 'label' => '&#215; Do not use for advice',   'css' => 'mle-rs-accept-btn mle-rs-accept-btn--archive', 'tip' => 'This run is excluded from advice.')
+            ) as $__rsActionKey => $__rsAction) {
+              $__btnCss = $__rsAction['css'];
+              $__btnLabel = $__rsAction['label'];
+              if ($__rsActionKey === $__rsCurrentStatus) {
+                $__btnCss .= ' mle-rs-accept-btn--current';
+                $__btnLabel .= ' (Current)';
+              }
+              echo '<form method="post" class="mle-rs-run__accept-form">'
+                . '<input type="hidden" name="mle_action" value="apply_evidence_choices">'
+                . '<input type="hidden" name="lottery_id" value="' . (int)$__advLid . '">'
+                . '<input type="hidden" name="' . htmlspecialchars((string)$__rsAction['field'], ENT_QUOTES, 'UTF-8') . '" value="' . $__rsPerfId . '">'
+                . $__csrfToken
+                . '<button type="submit" class="' . $__btnCss . '" title="' . htmlspecialchars((string)$__rsAction['tip'], ENT_QUOTES, 'UTF-8') . '">' . $__btnLabel . '</button>'
+                . '</form>';
+            }
+            echo '</div></div>';
           }
           echo '</div>';
           // Balls
@@ -12598,8 +12600,8 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
           if ($__rsActual !== '') {
             echo '<div class="mle-rs-run__balls"><span class="mle-visual-label">Actual draw</span>' . $__rsActual . '</div>';
           }
-          // Delete button (for archive group)
-          if ($__rsGroup === 'archive' && $__rsSavedId > 0) {
+          // Delete button (available from any run group)
+          if ($__rsSavedId > 0) {
             echo '<div class="mle-rs-run__delete">'
               . '<form method="post" class="mle-inline-action mle-inline-action--delete">'
               . '<input type="hidden" name="delete_set" value="' . $__rsSavedId . '">'
@@ -12617,7 +12619,7 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <div class="mle-rs-group mle-rs-group--keep">
           <div class="mle-rs-group__header">
             <span class="mle-rs-group__badge mle-rs-group__badge--keep">&#10003; Use for future advice &mdash; <?php echo count($__advClKeep); ?> run<?php echo count($__advClKeep) !== 1 ? 's' : ''; ?></span>
-            <p class="mle-rs-group__reason">These are your <strong>strongest runs</strong> &mdash; they matched the most actual draw numbers. LottoExpert will continue to use them to shape future predictions. Use the <em>Confirm</em> button on any run you want to lock in, or use <em>Apply All</em> below to accept all suggestions at once.</p>
+            <p class="mle-rs-group__reason">These are your <strong>strongest runs</strong> &mdash; they matched the most actual draw numbers. LottoExpert uses these to shape future predictions. You can now change any run to <em>Use for future advice</em>, <em>Keep for review</em>, or <em>Do not use for advice</em> directly from each run card.</p>
           </div>
           <div class="mle-rs-group__runs">
             <?php foreach ($__advClKeep as $__r): $__rsRenderRun($__r, 'keep'); endforeach; ?>
@@ -12629,7 +12631,7 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <div class="mle-rs-group mle-rs-group--review">
           <div class="mle-rs-group__header">
             <span class="mle-rs-group__badge mle-rs-group__badge--review">&#9711; Keep for review &mdash; <?php echo count($__advClReview); ?> run<?php echo count($__advClReview) !== 1 ? 's' : ''; ?></span>
-            <p class="mle-rs-group__reason">These are <strong>moderate performers</strong>. They had some hits but not enough to lead. They are paused &mdash; they will not steer the next prediction but remain in your history so you can revisit them. Confirm each one you agree with, or use <em>Apply All</em>.</p>
+            <p class="mle-rs-group__reason">These are <strong>moderate performers</strong>. They had some hits but not enough to lead. They are paused &mdash; they do not steer the next prediction but remain in your history. You can move any run between all three statuses at any time.</p>
           </div>
           <div class="mle-rs-group__runs">
             <?php foreach ($__advClReview as $__r): $__rsRenderRun($__r, 'review'); endforeach; ?>
@@ -12641,7 +12643,7 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <div class="mle-rs-group mle-rs-group--archive">
           <div class="mle-rs-group__header">
             <span class="mle-rs-group__badge mle-rs-group__badge--archive">&#215; Do not use for advice &mdash; <?php echo count($__advClArch); ?> run<?php echo count($__advClArch) !== 1 ? 's' : ''; ?></span>
-            <p class="mle-rs-group__reason">These runs had the <strong>fewest hits</strong>. Excluding them from advice keeps the focus on what has been working. <em>They are not deleted</em> &mdash; they stay in your history. Click <em>Confirm: remove from advice</em> to accept the suggestion. If you also want to permanently delete a run, use the red <em>Delete</em> button below it.</p>
+            <p class="mle-rs-group__reason">These runs had the <strong>fewest hits</strong>. Excluding them from advice keeps the focus on what has been working. <em>They are not deleted</em> &mdash; they stay in your history unless you choose <em>Delete this run permanently</em>. You can also move these runs back to advice or review any time.</p>
           </div>
           <div class="mle-rs-group__runs">
             <?php foreach ($__advClArch as $__r): $__rsRenderRun($__r, 'archive'); endforeach; ?>
@@ -13489,13 +13491,17 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 .mle-rs-run__hits--upcoming{background:#f1f5f9;color:#64748b;}
 .mle-rs-run__balls{margin-top:4px;margin-bottom:4px;}
 .mle-rs-run__delete{margin-top:6px;padding-top:6px;border-top:1px solid rgba(127,141,170,.12);}
-.mle-rs-run__accept-form{flex-shrink:0;}
+.mle-rs-run__actions-wrap{flex-basis:100%;display:block;}
+.mle-rs-run__action-help{font-size:.74rem;color:#64748b;margin-top:2px;margin-bottom:6px;}
+.mle-rs-run__actions{display:flex;flex-wrap:wrap;gap:6px;}
+.mle-rs-run__accept-form{flex:1 1 220px;min-width:180px;}
 /* Per-run accept buttons */
-.mle-rs-accept-btn{display:inline-flex;align-items:center;font-size:.75rem;font-weight:800;padding:5px 10px;border-radius:999px;border:1.5px solid;cursor:pointer;white-space:nowrap;line-height:1.2;}
+.mle-rs-accept-btn{display:inline-flex;align-items:center;justify-content:center;width:100%;font-size:.75rem;font-weight:800;padding:6px 10px;border-radius:999px;border:1.5px solid;cursor:pointer;white-space:normal;line-height:1.25;text-align:center;}
 .mle-rs-accept-btn:hover{opacity:.85;}
 .mle-rs-accept-btn--keep{background:#d1fae5;color:#065f46;border-color:#6ee7b7;}
 .mle-rs-accept-btn--review{background:#fef3c7;color:#92400e;border-color:#fcd34d;}
 .mle-rs-accept-btn--archive{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+.mle-rs-accept-btn--current{box-shadow:inset 0 0 0 2px rgba(10,26,51,.15);position:relative;}
 /* Apply-all footer */
 .mle-rs-apply-all{margin-top:16px;padding-top:14px;border-top:1px solid rgba(127,141,170,.18);}
 .mle-rs-apply-all__note{font-size:.82rem;color:#64748b;margin:0 0 8px;}
