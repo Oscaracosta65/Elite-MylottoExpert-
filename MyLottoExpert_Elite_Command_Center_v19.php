@@ -4466,6 +4466,31 @@ function mleAdvisoryBuildVisualRunRows(array $activeRows, array $perfRows) {
         $settings = mylottoexpertResolveRunDisplayInfo($s, array('skai_prediction'=>'SKAI','ai_prediction'=>'AI','mcmc_prediction'=>'MCMC','skip_hit'=>'Skip Hit','strategy_set'=>'Saved Run'));
         $drawDate = (string)($s['target_draw_date'] ?? $s['next_draw_date'] ?? $s['date_saved'] ?? '');
         if ($drawDate === '0000-00-00') { $drawDate = ''; }
+        // For past draws that have no performance record yet, attempt to resolve the
+        // official actual draw numbers directly from the draw table so the visual
+        // comparison shows what was drawn and which numbers worked/didn't work —
+        // matching the same behavior as the Draw Results Comparison (prc-table).
+        $actual = array();
+        $actualExtra = array();
+        $completed = false;
+        if ($drawDate !== '') {
+            $drawTs = strtotime($drawDate);
+            if ($drawTs !== false && $drawTs < time()) {
+                try {
+                    $__actualParts = mleAdvisoryResolveActualDrawPartsForVisual(
+                        array('draw_date' => $drawDate),
+                        $s, $pred, $predExtra
+                    );
+                    $actual = array_values(array_map('intval', (array)$__actualParts['main']));
+                    $actualExtra = array_values(array_map('intval', (array)$__actualParts['extra']));
+                    if (!empty($actual) || !empty($actualExtra)) {
+                        $completed = true;
+                    }
+                } catch (\Throwable $e) { }
+            }
+        }
+        $matches = $completed ? array_values(array_intersect($pred, $actual)) : array();
+        $extraMatches = $completed ? array_values(array_intersect($predExtra, $actualExtra)) : array();
         $addRow(array(
             'saved_id'=>$sid,
             'perf_id'=>0,
@@ -4475,19 +4500,19 @@ function mleAdvisoryBuildVisualRunRows(array $activeRows, array $perfRows) {
             'label'=>(string)($settings['label'] ?? ($s['label'] ?? 'Saved run')),
             'predicted'=>$pred,
             'predicted_extra'=>$predExtra,
-            'actual'=>array(),
-            'actual_extra'=>array(),
-            'matches'=>array(),
-            'extra_matches'=>array(),
-            'main_hits'=>0,
-            'extra_hits'=>0,
-            'total_hits'=>0,
+            'actual'=>$actual,
+            'actual_extra'=>$actualExtra,
+            'matches'=>$matches,
+            'extra_matches'=>$extraMatches,
+            'main_hits'=>count($matches),
+            'extra_hits'=>count($extraMatches),
+            'total_hits'=>count($matches) + count($extraMatches),
             'avg_rank'=>null,
             'quality_score'=>0.0,
             'top10_hits'=>0,
             'top20_hits'=>0,
             'status'=>(string)($s['advice_status'] ?? 'use_in_advice'),
-            'completed'=>false
+            'completed'=>$completed
         ));
     }
 
@@ -12409,27 +12434,31 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   height:36px !important;
   min-width:36px !important;
   border-radius:999px !important;
-  background:radial-gradient(circle at 30% 25%,#FFFFFF 0%,#EAF2FF 42%,#CFE0FF 100%) !important;
-  border:2px solid rgba(28,102,255,.30) !important;
-  color:var(--mle-navy) !important;
+  background:#f5f7ff !important;
+  border:2px solid #dde3ef !important;
+  color:#334155 !important;
   font-size:13px !important;
   font-weight:900 !important;
-  box-shadow:0 8px 16px rgba(10,26,51,.12), inset 0 1px 0 rgba(255,255,255,.95) !important;
+  box-shadow:none !important;
 }
+/* Predicted number that was drawn — same green as prc-num-hit */
 .mle-elite-cockpit .mle-ball--match{
-  background:radial-gradient(circle at 30% 25%,#EFFFF8 0%,#20C997 48%,#118A68 100%) !important;
-  border-color:#20C997 !important;
-  color:#fff !important;
-  box-shadow:0 10px 18px rgba(32,201,151,.32), inset 0 1px 0 rgba(255,255,255,.50) !important;
+  background:#16a34a !important;
+  border-color:#15803d !important;
+  color:#ffffff !important;
+  box-shadow:none !important;
 }
+/* Actual drawn number that was NOT predicted — neutral, same as base prc-num */
 .mle-elite-cockpit .mle-ball--actual{
-  background:radial-gradient(circle at 30% 25%,#FFFFFF 0%,#FFF4D8 42%,#F5A623 100%) !important;
-  border-color:rgba(245,166,35,.55) !important;
+  background:#f5f7ff !important;
+  border-color:#dde3ef !important;
+  color:#334155 !important;
 }
+/* Actual drawn number that WAS predicted — same green as prc-num-hit */
 .mle-elite-cockpit .mle-ball--actual.mle-ball--match{
-  background:radial-gradient(circle at 30% 25%,#EFFFF8 0%,#20C997 48%,#0F7A5D 100%) !important;
-  border-color:#20C997 !important;
-  color:#fff !important;
+  background:#16a34a !important;
+  border-color:#15803d !important;
+  color:#ffffff !important;
 }
 .mle-elite-cockpit .mle-visual-row__result{
   text-align:center;
@@ -26880,26 +26909,37 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
 .favorite-lotteries-grid .favorite-card .card-header{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .favorite-lotteries-grid .lotto-title-wrap{display:flex;align-items:center;gap:12px;min-width:0;}
 .favorite-lotteries-grid .draw-info{line-height:1.65;}
-/* MLE v12 extra-ball correction: Powerball, Mega Ball, Lucky Stars and other extra balls are red with white numbers. */
+/* Extra-ball colors matching the original Draw Results Comparison (prc-num-extra / prc-num-extra-miss). */
+/* Un-hit extra balls: light red, same as prc-num-extra-miss */
 .mle-elite-cockpit .mle-extra-label,
+.mle-elite-cockpit .mle-ball-list--extra .mle-ball,
 .mle-elite-cockpit .mle-ball--extra,
-.mle-elite-cockpit .mle-ball--actual.mle-ball--extra,
-.mle-elite-cockpit .mle-ball--extra.mle-ball--match,
-.mle-elite-cockpit .mle-ball--actual.mle-ball--extra.mle-ball--match {
-  background:#D71920 !important;
-  border-color:#A90F16 !important;
-  color:#FFFFFF !important;
-  box-shadow:0 4px 10px rgba(215,25,32,.22) !important;
+.mle-elite-cockpit .mle-ball--actual.mle-ball--extra {
+  background:#fef2f2 !important;
+  border-color:#fca5a5 !important;
+  color:#b91c1c !important;
+  box-shadow:none !important;
 }
-.mle-elite-cockpit .mle-ball-list--extra .mle-ball {
-  background:#D71920 !important;
-  border-color:#A90F16 !important;
-  color:#FFFFFF !important;
+/* Extra label badge: always fully red */
+.mle-elite-cockpit .mle-extra-label,
+.mle-elite-cockpit .mle-ball-set__extra .mle-extra-label {
+  background:#dc2626 !important;
+  border-color:#b91c1c !important;
+  color:#ffffff !important;
+}
+/* Hit extra balls: fully red, same as prc-num-extra */
+.mle-elite-cockpit .mle-ball--extra.mle-ball--match,
+.mle-elite-cockpit .mle-ball--actual.mle-ball--extra.mle-ball--match,
+.mle-elite-cockpit .mle-ball-list--extra .mle-ball.mle-ball--match {
+  background:#dc2626 !important;
+  border-color:#b91c1c !important;
+  color:#ffffff !important;
+  box-shadow:none !important;
 }
 .mle-elite-cockpit .mle-ball-set__extra {
   margin-top:5px;
   padding-top:5px;
-  border-top:1px dashed rgba(215,25,32,.28);
+  border-top:1px dashed rgba(220,38,38,.28);
 }
 </style>
 
@@ -27025,47 +27065,35 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
 
 
 <style>
-/* MLE v13 actual-draw extra-ball display correction. Actual Powerball, Mega Ball and EuroMillions Lucky Stars display as red balls with white numbers. */
+/* Extra-ball colors matching the original Draw Results Comparison (prc-num-extra / prc-num-extra-miss). */
+/* Un-hit extra balls: light red, same as prc-num-extra-miss */
 .mle-elite-cockpit .mle-ball-set__extra .mle-extra-label,
 .mle-elite-cockpit .mle-ball-list--extra .mle-ball,
 .mle-elite-cockpit .mle-ball--extra,
-.mle-elite-cockpit .mle-ball--actual.mle-ball--extra,
-.mle-elite-cockpit .mle-ball--actual.mle-ball--extra.mle-ball--match {
-  background:#D71920 !important;
+.mle-elite-cockpit .mle-ball--actual.mle-ball--extra {
+  background:#fef2f2 !important;
   background-image:none !important;
-  border-color:#9F1117 !important;
-  color:#FFFFFF !important;
+  border-color:#fca5a5 !important;
+  color:#b91c1c !important;
+  box-shadow:none !important;
   text-shadow:none !important;
 }
-</style>
-<style>
-/* MLE v14 extra-ball hit distinction. Un-hit extra balls show as muted red. Hit extra balls show as fully bright red so the user can instantly see which bonus numbers matched. */
 /* Extra label badge: always fully red */
 .mle-elite-cockpit .mle-ball-set__extra .mle-extra-label {
-  background:#D71920 !important;
+  background:#dc2626 !important;
   background-image:none !important;
-  border-color:#9F1117 !important;
-  color:#FFFFFF !important;
+  border-color:#b91c1c !important;
+  color:#ffffff !important;
 }
-/* Un-hit extra balls (predicted and actual): muted/lighter red */
-.mle-elite-cockpit .mle-ball-list--extra .mle-ball,
-.mle-elite-cockpit .mle-ball--extra,
-.mle-elite-cockpit .mle-ball--actual.mle-ball--extra {
-  background:#F87171 !important;
-  background-image:none !important;
-  border-color:#EF4444 !important;
-  color:#FFFFFF !important;
-  text-shadow:none !important;
-}
-/* Hit extra balls (predicted and actual): fully bright red */
+/* Hit extra balls: fully red, same as prc-num-extra */
 .mle-elite-cockpit .mle-ball-list--extra .mle-ball.mle-ball--match,
 .mle-elite-cockpit .mle-ball--extra.mle-ball--match,
 .mle-elite-cockpit .mle-ball--actual.mle-ball--extra.mle-ball--match {
-  background:#D71920 !important;
+  background:#dc2626 !important;
   background-image:none !important;
-  border-color:#9F1117 !important;
-  color:#FFFFFF !important;
-  box-shadow:0 6px 16px rgba(215,25,32,.5) !important;
+  border-color:#b91c1c !important;
+  color:#ffffff !important;
+  box-shadow:none !important;
   text-shadow:none !important;
 }
 </style>
