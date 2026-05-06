@@ -12923,6 +12923,108 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 </script>
 
 <?php
+// --------------------------------------------------
+// Load Data: Favorite Lotteries and Wheeling Systems
+// These must be loaded here, OUTSIDE the disabled block below, so the
+// Favorite Lotteries and Favorite Wheeling Systems sections at the bottom
+// of the page have the data they need.
+// --------------------------------------------------
+
+// 1) Favorite Lotteries
+$q = $db->getQuery(true)
+    ->select(array(
+        'l.lottery_id',
+        'l.name AS lottery_name',
+        's.name AS state_name',
+        'c.name AS country_name',
+        'l.lottery_urls',
+        'l.game_id',
+    ))
+    ->from($db->quoteName('#__user_lottery_preferences', 'ulp'))
+    ->join('INNER', $db->quoteName('#__lotteries', 'l') . ' ON ulp.lottery_id = l.lottery_id')
+    ->join('LEFT',  $db->quoteName('#__states', 's') . ' ON l.state_id = s.state_id')
+    ->join('LEFT',  $db->quoteName('#__countries', 'c') . ' ON s.country_id = c.country_id')
+    ->where('ulp.user_id = ' . $workspaceUserId)
+    ->order('s.name, l.name');
+
+$db->setQuery($q);
+$favoriteLotteries = $db->loadAssocList();
+if (!is_array($favoriteLotteries)) {
+    $favoriteLotteries = array();
+}
+
+// Build lookup: lottery_id -> country + state
+$lottoMetaById = array();
+foreach ($favoriteLotteries as $lotto) {
+    $id = $lotto['lottery_id'];
+    $lottoMetaById[$id] = array(
+        'state'   => isset($lotto['state_name'])   ? (string)$lotto['state_name']   : '',
+        'country' => isset($lotto['country_name']) ? (string)$lotto['country_name'] : '',
+    );
+}
+
+// Build lookup: lottery_id -> state_name
+$lottoStatesById = array();
+foreach ($favoriteLotteries as $lotto) {
+    if (!empty($lotto['lottery_id']) && !empty($lotto['state_name'])) {
+        $lottoStatesById[$lotto['lottery_id']] = $lotto['state_name'];
+    }
+}
+
+// Build map of lottery_id -> official URL
+$lottoUrlsById = array();
+foreach ($favoriteLotteries as $lotto) {
+    $lotteryId   = !empty($lotto['lottery_id']) ? (int)$lotto['lottery_id'] : 0;
+    $lotteryUrl  = !empty($lotto['lottery_urls']) ? trim((string)$lotto['lottery_urls']) : '';
+    $stateName   = !empty($lotto['state_name']) ? (string)$lotto['state_name'] : '';
+    $lotteryName = !empty($lotto['lottery_name']) ? (string)$lotto['lottery_name'] : '';
+
+    if ($lotteryId <= 0) {
+        continue;
+    }
+
+    if (mylottoexpertIsEuroMillionsLottery($stateName, $lotteryName)) {
+        $lottoUrlsById[$lotteryId] = ($lotteryUrl !== '') ? $lotteryUrl : 'https://lottoexpert.net/euromillions';
+        continue;
+    }
+
+    if ($lotteryUrl !== '') {
+        $lottoUrlsById[$lotteryId] = $lotteryUrl;
+    }
+}
+
+// 2) Wheeling Systems Favorites (JSON + DB catalog)
+$wheelFavoriteData = mylottoexpertLoadHydratedWheelFavorites($db, $workspaceUserId);
+$wheelingSystems = array();
+if (!empty($wheelFavoriteData['available'])) {
+    foreach ($wheelFavoriteData['available'] as $__wsDropItem) {
+        $wheelingSystems[] = array(
+            'system_id' => $__wsDropItem['system_id'],
+            'name'      => 'Favorite: System ' . $__wsDropItem['system_id']
+                         . ' (Pick ' . (int)$__wsDropItem['pick_size'] . ', ' . (int)$__wsDropItem['number_range'] . ' numbers)',
+        );
+    }
+}
+if (empty($wheelingSystems)) {
+    $__wsCatalogFallback = mylottoexpertLoadEffectiveCatalog($db);
+    if (is_array($__wsCatalogFallback)) {
+        foreach ($__wsCatalogFallback as $__wsDropItem) {
+            $wheelingSystems[] = array(
+                'system_id' => $__wsDropItem['system_id'],
+                'name'      => 'System ' . $__wsDropItem['system_id']
+                             . ' (Pick ' . (int)$__wsDropItem['pick_size'] . ', ' . (int)$__wsDropItem['number_range'] . ' numbers)',
+            );
+            if (count($wheelingSystems) >= 30) {
+                break;
+            }
+        }
+    }
+    unset($__wsCatalogFallback);
+}
+unset($__wsDropItem);
+?>
+
+<?php
 // Unified lottery-card cockpit: legacy standalone page sections are disabled.
 // All lottery-specific decision, saved-run, visual-comparison, run-selection, and next-settings-run work now lives inside each lottery card above.
 if (false):
