@@ -12237,6 +12237,13 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   $__advOlderBodyId = 'mle-section-body-' . $__advLid . '-older';
   $__advUpcomingBodyId = 'mle-section-body-' . $__advLid . '-upcoming';
   $__advAdvancedBodyId = 'mle-section-body-' . $__advLid . '-advanced';
+  $__advPlayBodyId = 'mle-section-body-' . $__advLid . '-numbers-to-play';
+  $__advSettingsBodyId = 'mle-section-body-' . $__advLid . '-saved-settings';
+  $__advFocusSectionId = 'mle-section-' . $__advLid . '-focus';
+  $__advPrecisionSectionId = 'mle-section-' . $__advLid . '-precision-lock';
+  $__advNextRunSectionId = 'mle-section-' . $__advLid . '-next-settings-run';
+  $__advVisualSectionId = 'mle-section-' . $__advLid . '-visual';
+  $__advShortcutsId = 'mle-section-shortcuts-' . $__advLid;
   $__advEvidencePanelId = 'mle-evidence-panel-' . $__advLid;
   $__advNextAction = $__advHasAdv ? 'Create Recommended Next Settings Run' : 'Keep scoring saved runs';
   // SKAI Precision Lock - per-lottery narrowing data (independent for every lottery)
@@ -12297,7 +12304,23 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <span>4. Compare next draw</span>
       </div>
     </section>
-    <section class="mle-optimization-focus">
+    <nav id="<?php echo $__advShortcutsId; ?>" class="mle-section-shortcuts" aria-label="<?php echo $__advLname; ?> section shortcuts">
+      <div class="mle-section-shortcuts__title">Quick section shortcuts</div>
+      <div class="mle-section-shortcuts__list">
+        <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advFocusSectionId; ?>">Optimization Focus</button>
+        <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advPrecisionSectionId; ?>">SKAI Precision Lock</button>
+        <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advNextRunSectionId; ?>">Recommended Next Settings Run</button>
+        <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advVisualSectionId; ?>" data-target-panel="<?php echo $__advVisualBodyId; ?>">Visual Run Comparison</button>
+        <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advRunsBodyId; ?>" data-target-panel="<?php echo $__advRunsBodyId; ?>">Saved Predictions</button>
+        <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advPlayBodyId; ?>" data-target-panel="<?php echo $__advPlayBodyId; ?>">Saved Numbers to Play</button>
+        <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advSettingsBodyId; ?>" data-target-panel="<?php echo $__advSettingsBodyId; ?>">Saved Settings</button>
+        <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advAdvancedBodyId; ?>" data-target-panel="<?php echo $__advAdvancedBodyId; ?>">Advanced Details</button>
+        <?php if (!empty($__advBClean) && !empty($__advBClean['has_recommendation'])): ?>
+        <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advEvidencePanelId; ?>">Run Selection for Better Advice</button>
+        <?php endif; ?>
+      </div>
+    </nav>
+    <section class="mle-optimization-focus" id="<?php echo $__advFocusSectionId; ?>">
       <div class="mle-optimization-focus__eyebrow">Optimization Focus</div>
       <h4 class="mle-optimization-focus__title">Current narrowing read</h4>
       <p>LottoExpert is using only this lottery's active saved runs and completed draw results to narrow toward the strongest, most consistent setup.</p>
@@ -12309,10 +12332,11 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
       </div>
     </section>
 
-    <section class="mle-precision-lock">
+    <section class="mle-precision-lock" id="<?php echo $__advPrecisionSectionId; ?>">
       <div class="mle-precision-lock__eyebrow">SKAI Precision Lock</div>
       <h4 class="mle-precision-lock__title">How this lottery is narrowing</h4>
       <p class="mle-precision-lock__intro">SKAI Precision Lock tracks where the strongest results are appearing for this lottery and whether the settings window is narrowing. This range is based only on your saved and scored runs for this lottery.</p>
+      <div class="mle-precision-lock__focus-banner">Current narrowing focus for this lottery</div>
       <div class="mle-precision-lock__stage-row">
         <span class="mle-plk-stage mle-plk-stage--<?php echo htmlspecialchars($__plkStage, ENT_QUOTES, 'UTF-8'); ?>"><?php echo $__plkStageLabel; ?></span>
         <span class="mle-plk-count"><?php echo $__plkRunCount; ?> scored run<?php echo $__plkRunCount === 1 ? '' : 's'; ?> analyzed for this lottery</span>
@@ -12377,7 +12401,7 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
       <p class="mle-precision-lock__summary"><?php echo $__plkSummary; ?></p>
     </section>
 
-    <section class="mle-next-settings-run">
+    <section class="mle-next-settings-run" id="<?php echo $__advNextRunSectionId; ?>">
       <div class="mle-next-settings-run__copy">
         <div class="mle-next-settings-run__eyebrow">Recommended Next Settings Run</div>
         <h4>Create the next settings test for this lottery</h4>
@@ -12412,12 +12436,12 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
       <?php endif; ?>
     </section>
 
-    <section class="mle-visual-comparison">
+    <section class="mle-visual-comparison" id="<?php echo $__advVisualSectionId; ?>">
       <div class="mle-section-headline">
         <div><h4>Visual Run Comparison</h4><p>Best runs are shown first. Duplicate records are merged so each saved run and draw appears once.</p></div>
-        <button type="button" class="mle-section-toggle" aria-expanded="true" aria-controls="<?php echo $__advVisualBodyId; ?>"><span>Hide Visual Run Comparison</span></button>
+        <button type="button" class="mle-section-toggle" data-mle-primary-section-toggle="1" aria-expanded="true" aria-controls="<?php echo $__advVisualBodyId; ?>"><span>Hide Visual Run Comparison</span></button>
       </div>
-      <div id="<?php echo $__advVisualBodyId; ?>" class="mle-section-body" style="display:block" aria-hidden="false">
+      <div id="<?php echo $__advVisualBodyId; ?>" class="mle-section-body" data-mle-primary-section-body="1" style="display:block" aria-hidden="false">
         <?php
           $__renderVisualRows = function(array $__rows, $__emptyText) use ($__advLid) {
             if (empty($__rows)) { echo '<div class="mle-visual-empty">' . htmlspecialchars($__emptyText, ENT_QUOTES, 'UTF-8') . '</div>'; return; }
@@ -12645,8 +12669,8 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
     </section>
     <?php endif; ?>
 
-    <button type="button" class="mle-section-toggle" aria-expanded="false" aria-controls="<?php echo $__advRunsBodyId; ?>"><span>View Saved Predictions</span></button>
-    <div id="<?php echo $__advRunsBodyId; ?>" class="mle-section-body mle-saved-runs-panel" style="display:none" aria-hidden="true">
+    <button type="button" class="mle-section-toggle" data-mle-primary-section-toggle="1" aria-expanded="false" aria-controls="<?php echo $__advRunsBodyId; ?>"><span>View Saved Predictions</span></button>
+    <div id="<?php echo $__advRunsBodyId; ?>" class="mle-section-body mle-saved-runs-panel" data-mle-primary-section-body="1" style="display:none" aria-hidden="true">
       <?php
         $__spAllRuns = array_merge(
           (array)($__advVisual['recent']   ?? array()),
@@ -12732,16 +12756,14 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
     <?php
       $__advPlayRows = (array)($__advCard['numbers_to_play'] ?? array());
       $__advSettingsRows = (array)($__advCard['saved_settings'] ?? array());
-      $__advPlayBodyId = 'mle-section-body-' . $__advLid . '-numbers-to-play';
-      $__advSettingsBodyId = 'mle-section-body-' . $__advLid . '-saved-settings';
     ?>
 
     <section class="mle-lottery-roof-section">
       <div class="mle-section-headline">
         <div><h4>Saved Numbers to Play</h4><p>Approved play sets for this lottery only. Use these when you are ready to wheel or play a refined set.</p></div>
-        <button type="button" class="mle-section-toggle" aria-expanded="false" aria-controls="<?php echo $__advPlayBodyId; ?>"><span>Show Saved Numbers to Play</span></button>
+        <button type="button" class="mle-section-toggle" data-mle-primary-section-toggle="1" aria-expanded="false" aria-controls="<?php echo $__advPlayBodyId; ?>"><span>Show Saved Numbers to Play</span></button>
       </div>
-      <div id="<?php echo $__advPlayBodyId; ?>" class="mle-section-body" style="display:none" aria-hidden="true">
+      <div id="<?php echo $__advPlayBodyId; ?>" class="mle-section-body" data-mle-primary-section-body="1" style="display:none" aria-hidden="true">
         <?php if (empty($__advPlayRows)): ?>
           <div class="mle-visual-empty">No saved Numbers to Play for this lottery yet.</div>
         <?php else: ?>
@@ -12761,9 +12783,9 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
     <section class="mle-lottery-roof-section">
       <div class="mle-section-headline">
         <div><h4>Saved Settings for This Lottery</h4><p>Saved settings profiles for this lottery only. These are the profiles LottoExpert can compare or use as a base for the next narrowing test.</p></div>
-        <button type="button" class="mle-section-toggle" aria-expanded="false" aria-controls="<?php echo $__advSettingsBodyId; ?>"><span>Show Saved Settings</span></button>
+        <button type="button" class="mle-section-toggle" data-mle-primary-section-toggle="1" aria-expanded="false" aria-controls="<?php echo $__advSettingsBodyId; ?>"><span>Show Saved Settings</span></button>
       </div>
-      <div id="<?php echo $__advSettingsBodyId; ?>" class="mle-section-body" style="display:none" aria-hidden="true">
+      <div id="<?php echo $__advSettingsBodyId; ?>" class="mle-section-body" data-mle-primary-section-body="1" style="display:none" aria-hidden="true">
         <?php if (empty($__advSettingsRows)): ?>
           <div class="mle-visual-empty">No saved settings for this lottery yet.</div>
         <?php else: ?>
@@ -12783,8 +12805,8 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
     </section>
 
 
-    <button type="button" class="mle-section-toggle mle-advanced-only" aria-expanded="false" aria-controls="<?php echo $__advAdvancedBodyId; ?>"><span>Show Advanced Details</span></button>
-    <div id="<?php echo $__advAdvancedBodyId; ?>" class="mle-section-body mle-advanced-only" style="display:none" aria-hidden="true">
+    <button type="button" class="mle-section-toggle mle-advanced-only" data-mle-primary-section-toggle="1" aria-expanded="false" aria-controls="<?php echo $__advAdvancedBodyId; ?>"><span>Show Advanced Details</span></button>
+    <div id="<?php echo $__advAdvancedBodyId; ?>" class="mle-section-body mle-advanced-only" data-mle-primary-section-body="1" style="display:none" aria-hidden="true">
       <p>Advanced details show how each prediction method performed across all your scored runs for this lottery. Use this to see which approach has the strongest track record.</p>
       <?php
         $__advLbRows = (array)($__advCard['leaderboard'] ?? array());
@@ -12989,6 +13011,51 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   line-height:1.55;
   margin:0 0 14px;
 }
+.mle-section-shortcuts{
+  margin:14px 0 16px;
+  padding:12px 14px;
+  border-radius:16px;
+  border:1px solid rgba(28,102,255,.22);
+  background:linear-gradient(180deg,#FFFFFF 0%,#F0F5FF 100%);
+  box-shadow:0 10px 24px rgba(28,102,255,.12);
+}
+.mle-section-shortcuts__title{
+  font-size:.76rem;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:#1C66FF;
+  font-weight:900;
+  margin-bottom:8px;
+}
+.mle-section-shortcuts__list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.mle-section-shortcut-btn{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  border:1px solid rgba(127,141,170,.32);
+  background:#fff;
+  color:#0A1A33;
+  font-size:.78rem;
+  font-weight:900;
+  letter-spacing:.01em;
+  padding:7px 11px;
+  cursor:pointer;
+}
+.mle-section-shortcut-btn:hover{
+  border-color:rgba(28,102,255,.45);
+  color:#1C66FF;
+}
+.mle-section-shortcut-btn.is-active,
+.mle-section-shortcut-btn[aria-current="true"]{
+  background:linear-gradient(135deg,#0A1A33 0%,#1C66FF 100%);
+  border-color:transparent;
+  color:#fff;
+  box-shadow:0 12px 26px rgba(28,102,255,.22);
+}
 .mle-lottery-command-hero__steps{
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
@@ -13024,9 +13091,41 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 }
 .mle-elite-cockpit .mle-precision-lock{
   border-radius:22px !important;
-  border:1px solid rgba(28,102,255,.20) !important;
-  background:linear-gradient(180deg,#F0F5FF 0%,#FFFFFF 100%) !important;
-  box-shadow:0 12px 30px rgba(28,102,255,.07) !important;
+  border:2px solid rgba(28,102,255,.35) !important;
+  background:linear-gradient(180deg,#EAF2FF 0%,#FFFFFF 100%) !important;
+  box-shadow:0 16px 34px rgba(28,102,255,.14),0 0 0 4px rgba(28,102,255,.08) inset !important;
+  position:relative;
+  overflow:hidden;
+}
+.mle-elite-cockpit .mle-precision-lock::after{
+  content:'';
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:4px;
+  background:linear-gradient(90deg,#1C66FF 0%,#20C997 50%,#1C66FF 100%);
+  opacity:.95;
+}
+.mle-precision-lock__focus-banner{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin:2px 0 10px;
+  padding:5px 11px;
+  border-radius:999px;
+  background:#0A1A33;
+  color:#fff;
+  font-size:.75rem;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  box-shadow:0 8px 18px rgba(10,26,51,.22);
+}
+.mle-precision-lock__focus-banner::before{
+  content:'\25CF';
+  color:#20C997;
+  animation:mle-plk-pulse 1.4s ease-in-out infinite;
 }
 .mle-precision-lock__eyebrow{
   font-size:11px;
@@ -13194,6 +13293,11 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 @media(max-width:900px){
   .mle-precision-lock__steps{flex-direction:column;}
   .mle-plk-step--arrow{display:none;}
+}
+@keyframes mle-plk-pulse{
+  0%{opacity:.45;transform:scale(.9);}
+  50%{opacity:1;transform:scale(1.12);}
+  100%{opacity:.45;transform:scale(.9);}
 }
 .mle-elite-cockpit .mle-visual-comparison{
   border:2px solid rgba(28,102,255,.18) !important;
@@ -29462,6 +29566,48 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
     }
     return null;
   }
+  function closestCard(el){
+    while(el && el !== document){
+      if(hasClass(el, 'mle-advisory-card')){
+        return el;
+      }
+      el = el.parentNode;
+    }
+    return null;
+  }
+  function setShortcutActive(card, targetId){
+    if(!card || !card.querySelectorAll){ return; }
+    var shortcuts = card.querySelectorAll('.mle-section-shortcut-btn');
+    var i;
+    for(i = 0; i < shortcuts.length; i++){
+      shortcuts[i].className = String(shortcuts[i].className || '').replace(/\bis-active\b/g, '').replace(/\s{2,}/g, ' ').replace(/^\s+|\s+$/g, '');
+      shortcuts[i].removeAttribute('aria-current');
+      var panelId = shortcuts[i].getAttribute('data-target-panel');
+      var sectionId = shortcuts[i].getAttribute('data-target-section');
+      if(targetId && (targetId === panelId || targetId === sectionId)){
+        shortcuts[i].className += ' is-active';
+        shortcuts[i].setAttribute('aria-current', 'true');
+      }
+    }
+  }
+  function collapseOtherPrimarySections(card, keepId){
+    if(!card || !card.querySelectorAll){ return; }
+    var sections = card.querySelectorAll('[data-mle-primary-section-body="1"]');
+    var i;
+    for(i = 0; i < sections.length; i++){
+      var section = sections[i];
+      var sid = section.getAttribute('id') || '';
+      if(!sid || sid === keepId){ continue; }
+      section.style.display = 'none';
+      section.setAttribute('aria-hidden', 'true');
+      var toggles = card.querySelectorAll('[aria-controls="' + sid + '"]');
+      var t;
+      for(t = 0; t < toggles.length; t++){
+        toggles[t].setAttribute('aria-expanded', 'false');
+        setText(toggles[t], false);
+      }
+    }
+  }
   function setText(btn, open){
     var node = null;
     var spans = btn.getElementsByTagName ? btn.getElementsByTagName('span') : [];
@@ -29492,9 +29638,13 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
     msg.appendChild(document.createTextNode(text));
     host.appendChild(msg);
   }
-  function openTarget(id){
+  function openTarget(id, sourceBtn){
     var el = id ? document.getElementById(id) : null;
     if(!el){ return false; }
+    var card = closestCard(sourceBtn || el);
+    if(card && el.getAttribute && el.getAttribute('data-mle-primary-section-body') === '1'){
+      collapseOtherPrimarySections(card, id);
+    }
     el.style.display = 'block';
     el.setAttribute('aria-hidden', 'false');
     var buttons = document.querySelectorAll ? document.querySelectorAll('[aria-controls="' + id + '"]') : [];
@@ -29503,8 +29653,11 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
       buttons[i].setAttribute('aria-expanded', 'true');
       setText(buttons[i], true);
     }
+    if(card){
+      setShortcutActive(card, id);
+    }
     try {
-      if(el.scrollIntoView){ el.scrollIntoView(false); }
+      if(el.scrollIntoView){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
     } catch(e) {}
     return true;
   }
@@ -29522,6 +29675,13 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
     el.setAttribute('aria-hidden', open ? 'false' : 'true');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     setText(btn, open);
+    var card = closestCard(btn);
+    if(card && open && el.getAttribute && el.getAttribute('data-mle-primary-section-body') === '1'){
+      collapseOtherPrimarySections(card, id);
+      setShortcutActive(card, id);
+    } else if(card && !open){
+      setShortcutActive(card, '');
+    }
   }
   function commandClick(ev){
     var btn = closestButton(ev.target || ev.srcElement);
@@ -29532,10 +29692,37 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
       toggleTarget(btn);
       return false;
     }
+    if(hasClass(btn, 'mle-section-shortcut-btn')){
+      if(ev.preventDefault){ ev.preventDefault(); }
+      if(ev.stopPropagation){ ev.stopPropagation(); }
+      var panelId = btn.getAttribute('data-target-panel');
+      var sectionId = btn.getAttribute('data-target-section');
+      if(panelId){
+        if(!openTarget(panelId, btn)){
+          messageNear(btn, 'This section shortcut could not open because its target was not found.');
+        } else {
+          var sec = sectionId ? document.getElementById(sectionId) : null;
+          try {
+            if(sec && sec.scrollIntoView){ sec.scrollIntoView({behavior:'smooth', block:'start'}); }
+          } catch(e) {}
+        }
+        return false;
+      }
+      var target = sectionId ? document.getElementById(sectionId) : null;
+      if(!target){
+        messageNear(btn, 'This section shortcut could not open because its target was not found.');
+        return false;
+      }
+      setShortcutActive(closestCard(btn), sectionId);
+      try {
+        if(target.scrollIntoView){ target.scrollIntoView({behavior:'smooth', block:'start'}); }
+      } catch(e) {}
+      return false;
+    }
     if(hasClass(btn, 'mle-review-runs-btn')){
       if(ev.preventDefault){ ev.preventDefault(); }
       if(ev.stopPropagation){ ev.stopPropagation(); }
-      if(!openTarget(btn.getAttribute('data-target-panel'))){
+      if(!openTarget(btn.getAttribute('data-target-panel'), btn)){
         messageNear(btn, 'This section could not be opened because its target was not found.');
       }
       return false;
