@@ -12041,6 +12041,69 @@ html[data-mle-mode="standard"] .mle-quick-nav__advanced{display:none !important;
   .mle-elite-cockpit .mle-lottery-toggle,
   .mle-elite-cockpit .mle-section-toggle{width:100%;}
 }
+/* ── Advisory card header: run-stat chips ── */
+.mle-adv-run-stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:10px;
+}
+.mle-adv-stat-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  border-radius:999px;
+  border:1px solid rgba(127,141,170,.28);
+  background:#fff;
+  padding:5px 11px;
+  font-size:.78rem;
+  font-weight:800;
+  line-height:1;
+  color:#334155;
+  box-shadow:0 2px 6px rgba(10,26,51,.05);
+}
+.mle-adv-stat-icon{font-size:.82rem;line-height:1;}
+.mle-adv-stat-value{font-size:.98rem;font-weight:900;color:#0A1A33;}
+.mle-adv-stat-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:#64748b;font-weight:800;}
+.mle-adv-stat-chip--scored{border-color:rgba(32,201,151,.35);background:#f0fdf9;}
+.mle-adv-stat-chip--scored .mle-adv-stat-value{color:#0e6b4a;}
+.mle-adv-stat-chip--pending{border-color:rgba(245,166,35,.4);background:#fffbf0;}
+.mle-adv-stat-chip--pending .mle-adv-stat-value{color:#92400e;}
+.mle-adv-stat-chip--best-hits{
+  border-color:rgba(28,102,255,.40);
+  background:linear-gradient(135deg,#EEF3FF 0%,#dbeafe 100%);
+}
+.mle-adv-stat-chip--best-hits .mle-adv-stat-value{color:#1C66FF;}
+/* When card is collapsed (dark header), flip chip to light-on-dark */
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-adv-stat-chip{
+  background:rgba(255,255,255,.12) !important;
+  border-color:rgba(255,255,255,.22) !important;
+  color:#fff !important;
+}
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-adv-stat-value,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-adv-stat-label{
+  color:#fff !important;
+}
+/* Results link + print button in shortcut bar */
+.mle-adv-results-link{
+  text-decoration:none;
+  background:linear-gradient(135deg,#0A1A33 0%,#1C66FF 100%) !important;
+  color:#fff !important;
+  border-color:transparent !important;
+  box-shadow:0 8px 18px rgba(28,102,255,.22) !important;
+}
+.mle-adv-results-link::before{display:none !important;}
+.mle-adv-print-btn{
+  background:#fff !important;
+  color:#334155 !important;
+  border:1px solid rgba(127,141,170,.32) !important;
+}
+.mle-adv-print-btn::before{display:none !important;}
+.mle-adv-print-btn:hover{border-color:rgba(28,102,255,.45) !important;color:#1C66FF !important;}
+@media(max-width:720px){
+  .mle-adv-run-stats{gap:5px;}
+  .mle-adv-stat-chip{padding:5px 8px;}
+}
 </style>
 
 
@@ -12230,6 +12293,17 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   $__advTotalRuns = (int)($__advStats['total_runs'] ?? 0);
   $__advTotalDraws = (int)($__advStats['completed_draws'] ?? 0);
   $__advBasedOn = $__advTotalRuns . ' active saved run' . ($__advTotalRuns === 1 ? '' : 's') . ' across ' . $__advTotalDraws . ' completed draw' . ($__advTotalDraws === 1 ? '' : 's');
+  // --- run-stat extras for header chips ---
+  $__advScoredRuns  = (int)($__advPredSum['scored_draws'] ?? 0);
+  $__advVisual2     = (array)($__advCard['visual_runs'] ?? array('recent'=>array(),'older'=>array(),'upcoming'=>array()));
+  $__advPendingRuns = count((array)($__advVisual2['upcoming'] ?? array()));
+  $__advBestHits    = 0;
+  foreach (array_merge((array)($__advVisual2['recent'] ?? array()), (array)($__advVisual2['older'] ?? array())) as $__vr) {
+      $__vh = (int)($__vr['hits_main'] ?? 0) + (int)($__vr['hits_extra'] ?? 0);
+      if ($__vh > $__advBestHits) { $__advBestHits = $__vh; }
+  }
+  unset($__advVisual2, $__vr, $__vh);
+  $__advLotteryUrl = isset($lottoUrlsById[$__advLid]) ? htmlspecialchars((string)$lottoUrlsById[$__advLid], ENT_QUOTES, 'UTF-8') : '';
   $__advSKey = (string)($__advSAdv['setting'] ?? '');
   $__advSLabelRaw = (string)($__advSAdv['setting_label'] ?? '');
   $__advSLabel = htmlspecialchars($__advSLabelRaw, ENT_QUOTES, 'UTF-8');
@@ -12302,6 +12376,30 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <span class="mle-adv-meta-sep">|</span>
         <span class="mle-adv-meta-item"><span class="mle-adv-meta-label">Next:</span> <?php echo htmlspecialchars($__advNextAction, ENT_QUOTES, 'UTF-8'); ?></span>
       </div>
+      <div class="mle-adv-run-stats" aria-label="Run statistics for <?php echo $__advLname; ?>">
+        <span class="mle-adv-stat-chip mle-adv-stat-chip--total" title="Total active saved runs for this lottery">
+          <span class="mle-adv-stat-icon">&#x1F4CB;</span>
+          <span class="mle-adv-stat-value"><?php echo $__advTotalRuns; ?></span>
+          <span class="mle-adv-stat-label">Total</span>
+        </span>
+        <span class="mle-adv-stat-chip mle-adv-stat-chip--scored" title="Draws scored so far">
+          <span class="mle-adv-stat-icon">&#x2705;</span>
+          <span class="mle-adv-stat-value"><?php echo $__advScoredRuns; ?></span>
+          <span class="mle-adv-stat-label">Scored</span>
+        </span>
+        <span class="mle-adv-stat-chip mle-adv-stat-chip--pending" title="Runs waiting for draw results">
+          <span class="mle-adv-stat-icon">&#x23F3;</span>
+          <span class="mle-adv-stat-value"><?php echo $__advPendingRuns; ?></span>
+          <span class="mle-adv-stat-label">Pending</span>
+        </span>
+        <?php if ($__advBestHits > 0): ?>
+        <span class="mle-adv-stat-chip mle-adv-stat-chip--best-hits" title="Best hits achieved in a scored draw">
+          <span class="mle-adv-stat-icon">&#x1F3AF;</span>
+          <span class="mle-adv-stat-value"><?php echo $__advBestHits; ?></span>
+          <span class="mle-adv-stat-label">Best Hits</span>
+        </span>
+        <?php endif; ?>
+      </div>
       <div class="mle-card-roof-map" aria-label="What is inside this lottery card">
         <span>Decision</span><span>Narrowing method</span><span>Next settings run</span><span>Visual proof</span><span>Saved runs</span><span>Saved numbers</span><span>Saved settings</span><span>Wheels</span>
       </div>
@@ -12336,6 +12434,10 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <?php if (!empty($__advBClean) && !empty($__advBClean['has_recommendation'])): ?>
         <button type="button" class="mle-section-shortcut-btn" data-target-section="<?php echo $__advEvidencePanelId; ?>">Run Selection for Better Advice</button>
         <?php endif; ?>
+        <?php if ($__advLotteryUrl !== ''): ?>
+        <a href="<?php echo $__advLotteryUrl; ?>" target="_blank" rel="noopener noreferrer" class="mle-section-shortcut-btn mle-adv-results-link">&#x1F30D; View Results Page</a>
+        <?php endif; ?>
+        <button type="button" class="mle-section-shortcut-btn mle-adv-print-btn" data-adv-print-card="1" aria-label="Print all predictions in this lottery card">&#x1F5A8;&#xFE0E; Print This Card</button>
       </div>
     </nav>
     <section class="mle-optimization-focus" id="<?php echo $__advFocusSectionId; ?>">
@@ -29871,6 +29973,12 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
       messageNear(btn, 'No changes applied. Your saved history was left as is.');
       return false;
     }
+    if(btn.getAttribute('data-adv-print-card')){
+      if(ev.preventDefault){ ev.preventDefault(); }
+      if(ev.stopPropagation){ ev.stopPropagation(); }
+      mleAdvisoryCardPrint(btn);
+      return false;
+    }
   }
   if(document.addEventListener){
     document.addEventListener('click', commandClick, true);
@@ -29880,6 +29988,119 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
 }());
 </script>
 <!-- /MLE COMMAND CARD FINAL INTERACTION REPAIR -->
+
+<script>
+/* ── Advisory-card print  (ES5, no external dependencies) ── */
+function mleAdvisoryCardPrint(btn) {
+  var LT = '\u003c', GT = '\u003e';
+  function esc(s) {
+    return String(s||'').replace(/&/g,'\u0026amp;').replace(/\u003c/g,'\u0026lt;').replace(/\u003e/g,'\u0026gt;').replace(/"/g,'\u0026quot;');
+  }
+  // walk up to find .mle-advisory-card
+  var node = btn;
+  while(node && node !== document){
+    if(node.className && String(node.className).indexOf('mle-advisory-card') !== -1){ break; }
+    node = node.parentNode;
+  }
+  if(!node || node === document){ return; }
+
+  // clone, then make ALL section bodies visible for print
+  var clone = node.cloneNode(true);
+
+  // show the main body
+  var body = clone.querySelector('.mle-advisory-card__body');
+  if(body){ body.style.display='block'; body.removeAttribute('aria-hidden'); }
+
+  // show every section-body / mle-section-body
+  var sbs = clone.querySelectorAll('.mle-section-body,[aria-hidden]');
+  for(var s=0;s<sbs.length;s++){
+    sbs[s].style.display='block';
+    sbs[s].style.visibility='visible';
+    sbs[s].style.height='auto';
+    sbs[s].style.maxHeight='none';
+    sbs[s].removeAttribute('aria-hidden');
+  }
+
+  // remove interactive controls
+  var rm = clone.querySelectorAll(
+    '.mle-lottery-toggle,.mle-section-toggle,.mle-section-shortcuts,.mle-section-shortcut-btn,button,input[type="checkbox"],.mle-adv-print-btn,.mle-adv-results-link'
+  );
+  for(var r=rm.length-1;r>=0;r--){
+    if(rm[r].parentNode){ rm[r].parentNode.removeChild(rm[r]); }
+  }
+
+  var lotteryTitle = '';
+  var h3 = clone.querySelector('.mle-advisory-card__lottery-name');
+  if(h3){ lotteryTitle = (h3.textContent || h3.innerText || '').replace(/^\s+|\s+$/g,''); }
+
+  var bodyHtml = clone.innerHTML;
+
+  // build print document
+  var p = [];
+  p.push(LT+'!DOCTYPE html'+GT);
+  p.push(LT+'html lang="en"'+GT+LT+'head'+GT);
+  p.push(LT+'meta charset="UTF-8"'+GT);
+  p.push(LT+'meta name="color-scheme" content="light only"'+GT);
+  p.push(LT+'title'+GT+esc(lotteryTitle||'Lottery Advisory Card')+LT+'/title'+GT);
+  p.push(LT+'style'+GT);
+  p.push('html,body{background:#fff !important;color:#111 !important;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;line-height:1.45;}');
+  p.push('.mle-print-toolbar{position:sticky;top:0;z-index:9999;padding:10px 16px;background:#0A1A33;color:#fff;border-bottom:1px solid #d1d5db;}');
+  p.push('.mle-print-toolbar-title{display:inline-block;font-size:15px;font-weight:700;vertical-align:middle;}');
+  p.push('.mle-print-toolbar-actions{float:right;}');
+  p.push('.mle-print-toolbar-btn{display:inline-block;margin-left:8px;padding:7px 12px;border:0;border-radius:6px;background:#1C66FF;color:#fff;font-size:13px;font-weight:700;cursor:pointer;}');
+  p.push('.mle-print-toolbar-btn-secondary{background:#4b5563;}');
+  p.push('.mle-print-doc{padding:20px;}');
+  p.push('h3,h4,h5{margin:0 0 8px;color:#0A1A33;}');
+  p.push('.mle-advisory-card__logo-fallback{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:#0A1A33;color:#fff;font-size:.8rem;font-weight:900;}');
+  p.push('.mle-advisory-card__lottery-ident{display:flex;align-items:center;gap:10px;margin-bottom:8px;}');
+  p.push('.mle-advisory-card__lottery-name{font-size:1.4rem;font-weight:900;color:#0A1A33;margin:0;}');
+  p.push('.mle-adv-run-stats{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}');
+  p.push('.mle-adv-stat-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid #cbd5e1;border-radius:999px;padding:4px 10px;font-size:.78rem;font-weight:800;color:#334155;background:#f8fafc;}');
+  p.push('.mle-adv-stat-chip--scored{background:#f0fdf9;border-color:#6ee7b7;}.mle-adv-stat-chip--pending{background:#fffbf0;border-color:#fcd34d;}.mle-adv-stat-chip--best-hits{background:#eff6ff;border-color:#93c5fd;}');
+  p.push('.mle-adv-stat-value{font-weight:900;color:#0A1A33;font-size:.95rem;}.mle-adv-stat-label{font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;color:#64748b;}');
+  p.push('.mle-proof-badge{display:inline-block;padding:3px 9px;border:1px solid #cbd5e1;border-radius:999px;font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.07em;}');
+  p.push('.mle-proof-badge--strong-pattern{background:#ffedd5;color:#9a3412;border-color:#fb923c;}');
+  p.push('.mle-proof-badge--trusted-recipe{background:#dcfce7;color:#166534;border-color:#86efac;}');
+  p.push('.mle-proof-badge--good-test,.mle-proof-badge--close-race{background:#fef3c7;color:#92400e;border-color:#fcd34d;}');
+  p.push('.mle-proof-badge--early-clue{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd;}');
+  p.push('.mle-proof-badge--too-early,.mle-proof-badge--no-clear-winner{background:#f1f5f9;color:#334155;border-color:#cbd5e1;}');
+  p.push('.mle-advisory-card__collapsed{padding:14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;border-radius:12px 12px 0 0;}');
+  p.push('.mle-advisory-card__body{padding:14px;background:#fff;}');
+  p.push('.mle-section-shortcuts{display:none !important;}');
+  p.push('.mle-lottery-command-hero{background:#0A1A33;color:#fff;border-radius:12px;padding:14px;margin:0 0 12px;}');
+  p.push('.mle-lottery-command-hero *{color:#fff !important;}');
+  p.push('.mle-optimization-focus,.mle-visual-comparison,.mle-next-settings-run,.mle-adv-pred-summary,.mle-lottery-roof-section,.mle-batch-cleanup,.mle-precision-lock{border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin:0 0 12px;background:#fff;}');
+  p.push('.mle-optimization-focus__grid,.mle-next-settings-run__details,.mle-adv-pred-summary__grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}');
+  p.push('.mle-optimization-focus__grid div,.mle-next-settings-run__details div,.mle-adv-pred-summary__grid div{border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:#f8fafc;}');
+  p.push('.mle-visual-row{border:1px solid #e2e8f0;border-radius:8px;padding:8px;margin:4px 0;background:#f8fafc;}');
+  p.push('.mle-ball{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:999px;background:#edf2ff;border:1px solid #dbe4ff;color:#0A1A33;font-weight:800;font-size:11px;}');
+  p.push('.mle-ball--match{background:#20C997;color:#fff;border-color:#20C997;}');
+  p.push('.mle-card-roof-map{display:none;}');
+  p.push('.mle-mini-card{border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#f8fafc;}');
+  p.push('@media print{html,body{background:#fff !important;}body{margin:0 !important;}.mle-print-toolbar{display:none !important;}}');
+  p.push(LT+'/style'+GT+LT+'/head'+GT+LT+'body'+GT);
+  p.push(LT+'div class="mle-print-toolbar"'+GT);
+  p.push(LT+'span class="mle-print-toolbar-title"'+GT+esc(lotteryTitle||'Lottery Advisory Card')+LT+'/span'+GT);
+  p.push(LT+'span class="mle-print-toolbar-actions"'+GT);
+  p.push(LT+'button type="button" class="mle-print-toolbar-btn" onclick="window.focus();window.print();"'+GT+'Print'+LT+'/button'+GT);
+  p.push(LT+'button type="button" class="mle-print-toolbar-btn mle-print-toolbar-btn-secondary" onclick="window.close();"'+GT+'Close'+LT+'/button'+GT);
+  p.push(LT+'/span'+GT+LT+'div style="clear:both"'+GT+LT+'/div'+GT+LT+'/div'+GT);
+  p.push(LT+'div class="mle-print-doc"'+GT+bodyHtml+LT+'/div'+GT);
+  p.push(LT+'script'+GT);
+  p.push('(function(){var pr=false;function go(){if(pr){return;}pr=true;window.focus();window.setTimeout(function(){try{window.print();}catch(e){}},250);}');
+  p.push('if(document.readyState==="complete"){window.setTimeout(go,250);}else if(window.addEventListener){window.addEventListener("load",function(){window.setTimeout(go,250);});}');
+  p.push('if(window.addEventListener){window.addEventListener("afterprint",function(){window.close();});}');
+  p.push('window.setTimeout(function(){try{window.close();}catch(e){}},120000);');
+  p.push('})();');
+  p.push(LT+'/script'+GT+LT+'/body'+GT+LT+'/html'+GT);
+
+  var html = p.join('');
+  var win = null;
+  try { win = window.open('','_blank','width=1100,height=800,menubar=no,toolbar=yes,location=no,status=no,scrollbars=yes,resizable=yes'); } catch(e){}
+  if(!win){ return; }
+  try { win.document.open(); win.document.write(html); win.document.close(); win.focus(); } catch(e){ try{win.close();}catch(e2){} }
+}
+</script>
 
 
 <style>
