@@ -11892,6 +11892,157 @@ html[data-mle-mode="standard"] .mle-quick-nav__advanced{display:none !important;
 }
 </style>
 
+<style>
+/* SKAI global visual system override (visual only, behavior preserved) */
+.mle-elite-cockpit{
+  --skai-blue:#1C66FF;
+  --skai-navy:#0A1A33;
+  --skai-sky:#EFEFF5;
+  --skai-slate:#7F8DAA;
+  --skai-success:#20C997;
+  --skai-amber:#F5A623;
+  --skai-deep-horizon:linear-gradient(135deg,#0A1A33 0%,#1C66FF 100%);
+  --skai-radiant-blue:linear-gradient(135deg,#1C66FF 0%,#7F8DAA 100%);
+  --skai-slate-mist:linear-gradient(180deg,#EFEFF5 0%,#FFFFFF 100%);
+  --skai-success-gradient:linear-gradient(135deg,#20C997 0%,#0A1A33 100%);
+  --skai-ember-gradient:linear-gradient(135deg,#F5A623 0%,#0A1A33 100%);
+  --skai-border:rgba(127,141,170,.28);
+  font-family:"Inter","SF Pro Text","Helvetica Now","Segoe UI",Roboto,Arial,sans-serif !important;
+  color:var(--skai-navy);
+}
+.mle-elite-cockpit,
+.mle-elite-cockpit .mle-advisory-board,
+.mle-elite-cockpit .mle-wheel-fav-section{
+  background:var(--skai-slate-mist);
+}
+.mle-elite-cockpit .mle-advisory-board__header,
+.mle-elite-cockpit .mle-wheel-fav-section,
+.mle-elite-cockpit .mle-advisory-card__body{
+  background:var(--skai-slate-mist) !important;
+  border-color:var(--skai-border) !important;
+}
+.mle-elite-cockpit .mle-advisory-card,
+.mle-elite-cockpit .mle-ci-lottery-card,
+.mle-elite-cockpit .mle-mini-card,
+.mle-elite-cockpit .mle-card,
+.mle-elite-cockpit .mle-section-card{
+  border:1px solid var(--skai-border) !important;
+  border-radius:20px !important;
+  box-shadow:0 12px 34px rgba(10,26,51,.08) !important;
+  background:#FFFFFF !important;
+}
+.mle-elite-cockpit .mle-advisory-board__title,
+.mle-elite-cockpit .mle-advisory-card__lottery-name,
+.mle-elite-cockpit h1,
+.mle-elite-cockpit h2,
+.mle-elite-cockpit h3,
+.mle-elite-cockpit h4{
+  color:var(--skai-navy) !important;
+  letter-spacing:-.01em;
+}
+.mle-elite-cockpit p,
+.mle-elite-cockpit .mle-advisory-board__subtitle,
+.mle-elite-cockpit .mle-card-title-subtitle,
+.mle-elite-cockpit .mle-ci-meta,
+.mle-elite-cockpit small{
+  color:#334155 !important;
+  line-height:1.55;
+}
+.mle-elite-cockpit .mle-next-settings-run,
+.mle-elite-cockpit .mle-lottery-command-hero{
+  background:var(--skai-deep-horizon) !important;
+  color:#FFFFFF !important;
+  border:0 !important;
+  box-shadow:0 18px 42px rgba(28,102,255,.24) !important;
+}
+.mle-elite-cockpit .mle-next-settings-run *,
+.mle-elite-cockpit .mle-lottery-command-hero *{
+  color:#FFFFFF !important;
+}
+.mle-elite-cockpit .mle-optimization-focus,
+.mle-elite-cockpit .mle-visual-comparison,
+.mle-elite-cockpit .mle-batch-cleanup,
+.mle-elite-cockpit .mle-adv-pred-summary,
+.mle-elite-cockpit .mle-lottery-roof-section{
+  background:var(--skai-slate-mist) !important;
+  border:1px solid var(--skai-border) !important;
+  box-shadow:0 10px 24px rgba(10,26,51,.06) !important;
+}
+.mle-elite-cockpit .mle-proof-badge,
+.mle-elite-cockpit .mle-status-chip,
+.mle-elite-cockpit .mle-chip{
+  border:1px solid rgba(28,102,255,.25) !important;
+  background:#EEF3FF !important;
+  color:var(--skai-navy) !important;
+}
+.mle-elite-cockpit .mle-proof-badge--strong,
+.mle-elite-cockpit .mle-status-success{
+  background:var(--skai-success-gradient) !important;
+  color:#FFFFFF !important;
+  border-color:transparent !important;
+}
+.mle-elite-cockpit .mle-status-warning,
+.mle-elite-cockpit .mle-proof-badge--caution{
+  background:var(--skai-ember-gradient) !important;
+  color:#FFFFFF !important;
+  border-color:transparent !important;
+}
+.mle-elite-cockpit .mle-lottery-toggle,
+.mle-elite-cockpit .mle-section-toggle,
+.mle-elite-cockpit .mle-advisory-btn,
+.mle-elite-cockpit .mle-review-runs-btn,
+.mle-elite-cockpit .prc-toggle-btn,
+.mle-elite-cockpit .btn-secondary{
+  min-height:40px;
+  border-radius:999px !important;
+  border:1px solid rgba(127,141,170,.35) !important;
+  background:linear-gradient(180deg,#FFFFFF 0%,#EFEFF5 100%) !important;
+  color:var(--skai-navy) !important;
+  font-weight:800 !important;
+  box-shadow:0 8px 18px rgba(10,26,51,.08) !important;
+}
+.mle-elite-cockpit .mle-advisory-btn--primary,
+.mle-elite-cockpit .mle-next-settings-run__form button,
+.mle-elite-cockpit .mle-lottery-toggle[aria-expanded="false"]{
+  background:var(--skai-deep-horizon) !important;
+  color:#FFFFFF !important;
+  border-color:transparent !important;
+  box-shadow:0 12px 26px rgba(28,102,255,.25) !important;
+}
+.mle-elite-cockpit button:focus-visible,
+.mle-elite-cockpit a:focus-visible{
+  outline:3px solid rgba(28,102,255,.35) !important;
+  outline-offset:2px !important;
+}
+.mle-elite-cockpit .mle-advisory-card__collapsed{
+  background:var(--skai-slate-mist) !important;
+  border-bottom:1px solid var(--skai-border) !important;
+}
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed{
+  background:var(--skai-deep-horizon) !important;
+}
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed .mle-advisory-card__lottery-name,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed .mle-card-title-subtitle,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed .mle-advisory-card__collapsed-meta,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed .mle-advisory-card__collapsed-meta *,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed .mle-card-roof-map span{
+  color:#FFFFFF !important;
+  border-color:rgba(255,255,255,.25) !important;
+  background:rgba(255,255,255,.10) !important;
+}
+.mle-elite-cockpit .mle-local-message,
+.mle-elite-cockpit .mle-command-local-message{
+  background:var(--skai-slate-mist) !important;
+  color:var(--skai-navy) !important;
+  border:1px solid var(--skai-border) !important;
+}
+@media(max-width:900px){
+  .mle-elite-cockpit .mle-advisory-card{border-radius:16px !important;}
+  .mle-elite-cockpit .mle-lottery-toggle,
+  .mle-elite-cockpit .mle-section-toggle{width:100%;}
+}
+</style>
+
 
 <?php
 // Render Joomla enqueued messages (from $app->enqueueMessage()) inline so that
