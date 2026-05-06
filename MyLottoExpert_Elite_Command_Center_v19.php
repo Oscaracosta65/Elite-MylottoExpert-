@@ -4365,6 +4365,127 @@ function mleAdvisoryComputeSettingsAdvisor($db, $userId, $lotteryId, $method = '
     return mleAdvisoryComputeSettingsAdvisorFromRows($perf, $savedById, $method);
 }
 
+// SKAI Precision Lock: compute the narrowing range for one lottery using only that lottery's
+// active saved evidence and completed scored runs. Returns stage, range, sweet spot, and summary.
+// Each lottery card must call this independently - ranges are never shared between lotteries.
+function mleAdvisoryComputePrecisionLockData(array $perfRows, array $savedById, $method) {
+    $method = mleAdvisorySourceToMethodKey($method);
+    $scored = array();
+    $ctrlLabel = 'Blend Setting';
+    foreach ($perfRows as $row) {
+        $m = (string)($row['__method_key'] ?? mleAdvisorySourceToMethodKey($row['source'] ?? ''));
+        if ($m !== $method) { continue; }
+        $sid = (int)($row['__saved_id'] ?? $row['run_id'] ?? 0);
+        if ($sid <= 0 || empty($savedById[$sid])) { continue; }
+        $settings = mylottoexpertResolveEffectiveSettings($savedById[$sid]);
+        // Find the primary percentage control for this run
+        $pct = null;
+        foreach (array('skai_blend_ai_pct','blend_ai_pct','ai_pct','blend_percent','blend_pct','ai_blend_pct') as $k) {
+            if (isset($settings[$k]) && is_numeric($settings[$k])) {
+                $pct = (float)$settings[$k];
+                $ctrlLabel = 'Blend Setting';
+                break;
+            }
+        }
+        if ($pct === null && isset($settings['skai_window_size']) && is_numeric($settings['skai_window_size'])) {
+            $pct = min(100.0, max(0.0, (float)$settings['skai_window_size']));
+            $ctrlLabel = 'History Window';
+        }
+        if ($pct === null) { continue; }
+        $top10 = (int)($row['top10_hits'] ?? 0);
+        $top20 = (int)($row['top20_hits'] ?? 0);
+        $rank = (float)($row['avg_winning_rank'] ?? 999);
+        $quality = (float)($row['weighted_quality_score'] ?? 0);
+        $score = ($quality > 0) ? ($quality * 10.0) : (($top10 * 3.0) + ($top20 * 1.5) - ($rank * 0.3));
+        $scored[] = array('pct' => $pct, 'score' => $score);
+    }
+    $total = is_array($scored) ? count($scored) : 0;
+    $noData = array(
+        'stage'        => 'broad_testing',
+        'stage_label'  => 'Broad testing',
+        'has_range'    => false,
+        'range_min'    => 0.0,
+        'range_max'    => 100.0,
+        'sweet_min'    => null,
+        'sweet_max'    => null,
+        'run_count'    => $total,
+        'control_label'=> $ctrlLabel,
+        'summary'      => 'Not enough saved scored runs yet for this lottery. Keep saving runs for this lottery before narrowing the range further.',
+    );
+    if ($total < 3) { return $noData; }
+    usort($scored, function($a, $b) { return ($b['score'] > $a['score']) ? 1 : (($b['score'] < $a['score']) ? -1 : 0); });
+    // Strong zone: top 40% by score
+    $cutStrong = max(1, (int)ceil($total * 0.40));
+    $strongRuns = array_slice($scored, 0, $cutStrong);
+    $strongPcts = array();
+    foreach ($strongRuns as $r) { $strongPcts[] = $r['pct']; }
+    $rangeMin = min($strongPcts);
+    $rangeMax = max($strongPcts);
+    // Sweet spot: top 20% by score
+    $sweetMin = null;
+    $sweetMax = null;
+    $cutSweet = max(1, (int)ceil($total * 0.20));
+    if ($cutSweet >= 2) {
+        $sweetRuns = array_slice($scored, 0, $cutSweet);
+        $sweetPcts = array();
+        foreach ($sweetRuns as $r) { $sweetPcts[] = $r['pct']; }
+        $sweetMin = (float)min($sweetPcts);
+        $sweetMax = (float)max($sweetPcts);
+        // Only report sweet spot if it is narrower than the strong zone
+        if ($sweetMin >= $rangeMin && $sweetMax <= $rangeMax && ($sweetMax - $sweetMin) < ($rangeMax - $rangeMin)) {
+            // Sweet spot is valid
+        } else {
+            $sweetMin = null;
+            $sweetMax = null;
+        }
+    }
+    $rangeWidth = $rangeMax - $rangeMin;
+    // Determine stage based on run count and range width
+    if ($total >= 15 && $sweetMin !== null && ($sweetMax - $sweetMin) <= 15.0) {
+        $stage = 'precision_lock';
+        $stageLabel = 'SKAI Precision Lock range';
+    } elseif ($total >= 10 && $rangeWidth <= 35.0) {
+        $stage = 'narrowing';
+        $stageLabel = 'Narrowing';
+    } elseif ($total >= 6 && $rangeWidth <= 55.0) {
+        $stage = 'better_range';
+        $stageLabel = 'Better range forming';
+    } elseif ($total >= 3) {
+        $stage = 'early_pattern';
+        $stageLabel = 'Early pattern';
+    } else {
+        $stage = 'broad_testing';
+        $stageLabel = 'Broad testing';
+    }
+    $rMin = (int)round($rangeMin);
+    $rMax = (int)round($rangeMax);
+    if ($stage === 'broad_testing') {
+        $summary = 'Early stage. Keep saving scored runs for this lottery before narrowing further.';
+    } elseif ($stage === 'early_pattern') {
+        $summary = 'A pattern is starting to appear for this lottery. The ' . $ctrlLabel . ' range ' . $rMin . ' to ' . $rMax . ' is showing the earliest signal. Save more runs to confirm.';
+    } elseif ($stage === 'better_range') {
+        $summary = 'A better range is forming for this lottery between ' . $rMin . ' and ' . $rMax . '. Test more closely inside this zone to build stronger evidence.';
+    } elseif ($stage === 'narrowing') {
+        $summary = 'Results are improving more often for this lottery between ' . $rMin . ' and ' . $rMax . '. Continue testing inside this range and avoid going outside it.';
+    } else {
+        $sMin = (int)round($sweetMin);
+        $sMax = (int)round($sweetMax);
+        $summary = 'The strongest consistent zone so far for this lottery is ' . $sMin . ' to ' . $sMax . '. Stay within this lottery\'s range and test one setting at a time.';
+    }
+    return array(
+        'stage'        => $stage,
+        'stage_label'  => $stageLabel,
+        'has_range'    => true,
+        'range_min'    => (float)$rangeMin,
+        'range_max'    => (float)$rangeMax,
+        'sweet_min'    => $sweetMin,
+        'sweet_max'    => $sweetMax,
+        'run_count'    => $total,
+        'control_label'=> $ctrlLabel,
+        'summary'      => $summary,
+    );
+}
+
 function mleAdvisoryNumbersFromJson($raw) {
     $out = array();
     $decoded = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
@@ -4737,7 +4858,9 @@ function mleAdvisoryBuildLotteryCard($db, $userId, $lotteryId, $lotteryName = ''
     $settingsRows = mleAdvisoryLoadSavedSettingsForLottery($db, $userId, $lotteryId, 30);
     $playRows = mleAdvisoryLoadNumbersToPlayForLottery($db, $userId, $lotteryId, 30);
     $wheelRows = mleAdvisoryLoadFavoriteWheelsForLottery($db, $userId, $lotteryId, $activeRows, 12);
-    return array('lottery_id'=>$lotteryId,'lottery_name'=>$resolvedLotteryName,'has_data'=>true,'top_method'=>$topMethod,'leaderboard'=>$methods,'method_opinions'=>$methodOpinions,'settings_advice'=>$settingsAdv,'proof_level'=>$proof,'next_step'=>!empty($settingsAdv['has_advice'])?'Create the recommended next settings run and test only one change.':'Keep saving and scoring runs before changing settings.','what_to_do'=>'Use the visual run comparison to keep strong runs, remove noisy runs from advice, and create the next settings test.','decision'=>$decision,'why_support'=>$why,'base_run_id'=>$baseRunId,'stats'=>array('total_runs'=>$leaderboard['stats']['total_runs']??count($activeRows),'completed_draws'=>$leaderboard['stats']['total_draws']??0,'active_methods'=>$leaderboard['stats']['method_count']??0),'batch_cleanup'=>($cleanup['has_recommendation']??false)?$cleanup:null,'prediction_summary'=>$summary,'visual_runs'=>$visual,'active_rows'=>$activeRows,'saved_settings'=>$settingsRows,'numbers_to_play'=>$playRows,'wheel_systems'=>$wheelRows);
+    // Compute SKAI Precision Lock range independently for this lottery only.
+    $precisionLock = mleAdvisoryComputePrecisionLockData($perf, $savedById, $topMethod['method']);
+    return array('lottery_id'=>$lotteryId,'lottery_name'=>$resolvedLotteryName,'has_data'=>true,'top_method'=>$topMethod,'leaderboard'=>$methods,'method_opinions'=>$methodOpinions,'settings_advice'=>$settingsAdv,'proof_level'=>$proof,'next_step'=>!empty($settingsAdv['has_advice'])?'Create the recommended next settings run and test only one change.':'Keep saving and scoring runs before changing settings.','what_to_do'=>'Use the visual run comparison to keep strong runs, remove noisy runs from advice, and create the next settings test.','decision'=>$decision,'why_support'=>$why,'base_run_id'=>$baseRunId,'stats'=>array('total_runs'=>$leaderboard['stats']['total_runs']??count($activeRows),'completed_draws'=>$leaderboard['stats']['total_draws']??0,'active_methods'=>$leaderboard['stats']['method_count']??0),'batch_cleanup'=>($cleanup['has_recommendation']??false)?$cleanup:null,'prediction_summary'=>$summary,'visual_runs'=>$visual,'active_rows'=>$activeRows,'saved_settings'=>$settingsRows,'numbers_to_play'=>$playRows,'wheel_systems'=>$wheelRows,'precision_lock'=>$precisionLock);
 }
 
 function mleAdvisoryLoadAllLotteryCards($db, $userId) {
@@ -11965,6 +12088,29 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   $__advAdvancedBodyId = 'mle-section-body-' . $__advLid . '-advanced';
   $__advEvidencePanelId = 'mle-evidence-panel-' . $__advLid;
   $__advNextAction = $__advHasAdv ? 'Create Recommended Next Settings Run' : 'Keep scoring saved runs';
+  // SKAI Precision Lock - per-lottery narrowing data (independent for every lottery)
+  $__advPLK = (array)($__advCard['precision_lock'] ?? array(
+      'stage'=>'broad_testing','stage_label'=>'Broad testing','has_range'=>false,
+      'range_min'=>0.0,'range_max'=>100.0,'sweet_min'=>null,'sweet_max'=>null,
+      'run_count'=>0,'control_label'=>'Blend Setting',
+      'summary'=>'Not enough saved scored runs yet for this lottery. Keep saving runs before narrowing further.',
+  ));
+  $__plkStage = (string)($__advPLK['stage'] ?? 'broad_testing');
+  $__plkStageLabel = htmlspecialchars((string)($__advPLK['stage_label'] ?? 'Broad testing'), ENT_QUOTES, 'UTF-8');
+  $__plkHasRange = !empty($__advPLK['has_range']);
+  $__plkRangeMin = max(0.0, min(100.0, (float)($__advPLK['range_min'] ?? 0)));
+  $__plkRangeMax = max(0.0, min(100.0, (float)($__advPLK['range_max'] ?? 100)));
+  $__plkSweetMin = ($__advPLK['sweet_min'] !== null && $__advPLK['sweet_min'] !== '') ? max(0.0, min(100.0, (float)$__advPLK['sweet_min'])) : null;
+  $__plkSweetMax = ($__advPLK['sweet_max'] !== null && $__advPLK['sweet_max'] !== '') ? max(0.0, min(100.0, (float)$__advPLK['sweet_max'])) : null;
+  $__plkRunCount = (int)($__advPLK['run_count'] ?? 0);
+  $__plkCtrlLabel = htmlspecialchars((string)($__advPLK['control_label'] ?? 'Blend Setting'), ENT_QUOTES, 'UTF-8');
+  $__plkSummary = htmlspecialchars((string)($__advPLK['summary'] ?? ''), ENT_QUOTES, 'UTF-8');
+  // Width and left-offset for CSS (percent values already in 0-100 range)
+  $__plkZoneLeft = round($__plkRangeMin, 1);
+  $__plkZoneWidth = round(max(0.0, $__plkRangeMax - $__plkRangeMin), 1);
+  $__plkSweetLeft = ($__plkSweetMin !== null) ? round($__plkSweetMin, 1) : null;
+  $__plkSweetWidth = ($__plkSweetMin !== null && $__plkSweetMax !== null) ? round(max(0.0, $__plkSweetMax - $__plkSweetMin), 1) : null;
+  $__plkSweetMid = ($__plkSweetMin !== null && $__plkSweetMax !== null) ? round(($__plkSweetMin + $__plkSweetMax) / 2.0, 1) : null;
 ?>
 <div class="mle-advisory-card mle-optimization-card" id="mle-adv-card-<?php echo $__advLid; ?>" data-lottery-id="<?php echo $__advLid; ?>">
   <div class="mle-advisory-card__collapsed">
@@ -12010,6 +12156,74 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <div><span>Best settings profile so far</span><strong><?php echo $__advBestRecipe !== '' ? $__advBestRecipe : 'Still building a clear profile'; ?></strong></div>
         <div><span>Why this test matters</span><strong><?php echo $__advHasAdv ? 'Testing one setting at a time shows whether that setting truly improves consistency.' : 'More saved completed runs are needed before making a setting change.'; ?></strong></div>
       </div>
+    </section>
+
+    <section class="mle-precision-lock">
+      <div class="mle-precision-lock__eyebrow">SKAI Precision Lock</div>
+      <h4 class="mle-precision-lock__title">How this lottery is narrowing</h4>
+      <p class="mle-precision-lock__intro">SKAI Precision Lock tracks where the strongest results are appearing for this lottery and whether the settings window is narrowing. This range is based only on your saved and scored runs for this lottery.</p>
+      <div class="mle-precision-lock__stage-row">
+        <span class="mle-plk-stage mle-plk-stage--<?php echo htmlspecialchars($__plkStage, ENT_QUOTES, 'UTF-8'); ?>"><?php echo $__plkStageLabel; ?></span>
+        <span class="mle-plk-count"><?php echo $__plkRunCount; ?> scored run<?php echo $__plkRunCount === 1 ? '' : 's'; ?> analyzed for this lottery</span>
+      </div>
+      <?php if ($__plkHasRange): ?>
+      <div class="mle-precision-lock__steps">
+        <div class="mle-plk-step">
+          <div class="mle-plk-step__label">1. Broad testing</div>
+          <div class="mle-plk-step__desc">Start across the full <?php echo $__plkCtrlLabel; ?> range. Test more than one mode.</div>
+        </div>
+        <div class="mle-plk-step mle-plk-step--arrow">-</div>
+        <div class="mle-plk-step">
+          <div class="mle-plk-step__label">2. Track where results improve</div>
+          <div class="mle-plk-step__desc">After saving 8-15 runs, patterns begin to appear for this lottery.</div>
+        </div>
+        <div class="mle-plk-step mle-plk-step--arrow">-</div>
+        <div class="mle-plk-step">
+          <div class="mle-plk-step__label">3. Narrow the funnel</div>
+          <div class="mle-plk-step__desc">Test more closely inside the better-performing range for this lottery.</div>
+        </div>
+        <div class="mle-plk-step mle-plk-step--arrow">-</div>
+        <div class="mle-plk-step">
+          <div class="mle-plk-step__label">4. Use the sweet spot</div>
+          <div class="mle-plk-step__desc">Stay within the narrower zone and keep tracking results for this lottery.</div>
+        </div>
+      </div>
+      <div class="mle-precision-lock__track-wrap" aria-label="SKAI Precision Lock narrowing range for <?php echo $__advLname; ?>">
+        <div class="mle-plk-track-labels-top">
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
+        <div class="mle-plk-track">
+          <div class="mle-plk-track__bar"></div>
+          <div class="mle-plk-track__zone" style="left:<?php echo $__plkZoneLeft; ?>%;width:<?php echo $__plkZoneWidth; ?>%;" title="Stronger range for this lottery: <?php echo (int)round($__plkRangeMin); ?> to <?php echo (int)round($__plkRangeMax); ?>"></div>
+          <?php if ($__plkSweetLeft !== null && $__plkSweetWidth !== null): ?>
+          <div class="mle-plk-track__sweet" style="left:<?php echo $__plkSweetLeft; ?>%;width:<?php echo $__plkSweetWidth; ?>%;" title="Sweet spot for this lottery: <?php echo (int)round($__plkSweetMin); ?> to <?php echo (int)round($__plkSweetMax); ?>"></div>
+          <?php endif; ?>
+          <div class="mle-plk-track__marker" style="left:<?php echo $__plkZoneLeft; ?>%;" title="Range start: <?php echo (int)round($__plkRangeMin); ?>"></div>
+          <div class="mle-plk-track__marker" style="left:<?php echo $__plkZoneLeft + $__plkZoneWidth; ?>%;" title="Range end: <?php echo (int)round($__plkRangeMax); ?>"></div>
+        </div>
+        <div class="mle-plk-track-labels-bottom">
+          <span>0</span>
+          <span>25</span>
+          <span>50</span>
+          <span>75</span>
+          <span>100</span>
+        </div>
+        <div class="mle-plk-zone-info">
+          <?php if ($__plkStage === 'precision_lock' && $__plkSweetLeft !== null): ?>
+          <span class="mle-plk-zone-badge mle-plk-zone-badge--sweet">Sweet spot for this lottery: <?php echo (int)round($__plkSweetMin); ?> to <?php echo (int)round($__plkSweetMax); ?></span>
+          <?php elseif ($__plkStage === 'narrowing'): ?>
+          <span class="mle-plk-zone-badge mle-plk-zone-badge--narrow">Refined range for this lottery: <?php echo (int)round($__plkRangeMin); ?> to <?php echo (int)round($__plkRangeMax); ?></span>
+          <?php else: ?>
+          <span class="mle-plk-zone-badge mle-plk-zone-badge--broad">Best range so far for this lottery: <?php echo (int)round($__plkRangeMin); ?> to <?php echo (int)round($__plkRangeMax); ?></span>
+          <?php endif; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+      <p class="mle-precision-lock__summary"><?php echo $__plkSummary; ?></p>
     </section>
 
     <section class="mle-next-settings-run">
@@ -12364,6 +12578,185 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   border:1px solid rgba(127,141,170,.22) !important;
   background:#fff !important;
   box-shadow:0 16px 42px rgba(10,26,51,.055) !important;
+}
+/* SKAI Precision Lock section */
+.mle-precision-lock{
+  border:1px solid rgba(28,102,255,.18);
+  border-radius:16px;
+  padding:18px;
+  margin:14px 0;
+  background:linear-gradient(180deg,#F0F5FF 0%,#FFFFFF 100%);
+}
+.mle-elite-cockpit .mle-precision-lock{
+  border-radius:22px !important;
+  border:1px solid rgba(28,102,255,.20) !important;
+  background:linear-gradient(180deg,#F0F5FF 0%,#FFFFFF 100%) !important;
+  box-shadow:0 12px 30px rgba(28,102,255,.07) !important;
+}
+.mle-precision-lock__eyebrow{
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:#1C66FF;
+  font-weight:800;
+}
+.mle-precision-lock__title{
+  margin:.15rem 0 .4rem;
+  color:#0A1A33;
+}
+.mle-precision-lock__intro{
+  color:#334155;
+  font-size:.9rem;
+  line-height:1.55;
+  margin:.3rem 0 .8rem;
+}
+.mle-precision-lock__stage-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.mle-plk-stage{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+}
+.mle-plk-stage--broad_testing{ background:#e2e8f0; color:#475569; }
+.mle-plk-stage--early_pattern{ background:#dbeafe; color:#1e40af; }
+.mle-plk-stage--better_range{ background:#d1fae5; color:#065f46; }
+.mle-plk-stage--narrowing{ background:#fef3c7; color:#92400e; }
+.mle-plk-stage--precision_lock{ background:#f0fdf4; color:#166534; border:1px solid #86efac; }
+.mle-plk-count{
+  font-size:11px;
+  color:#7F8DAA;
+}
+/* Narrowing steps */
+.mle-precision-lock__steps{
+  display:flex;
+  align-items:flex-start;
+  gap:6px;
+  flex-wrap:wrap;
+  margin:10px 0 14px;
+  padding:12px;
+  background:rgba(28,102,255,.04);
+  border-radius:12px;
+}
+.mle-plk-step{
+  flex:1;
+  min-width:120px;
+  padding:8px 10px;
+  background:#fff;
+  border:1px solid rgba(127,141,170,.18);
+  border-radius:10px;
+  font-size:.78rem;
+  line-height:1.4;
+}
+.mle-plk-step__label{
+  font-weight:800;
+  color:#0A1A33;
+  font-size:.77rem;
+  margin-bottom:3px;
+}
+.mle-plk-step__desc{
+  color:#7F8DAA;
+  font-size:.75rem;
+}
+.mle-plk-step--arrow{
+  flex:none;
+  min-width:auto;
+  padding:8px 2px;
+  border:none;
+  background:transparent;
+  color:#7F8DAA;
+  font-size:1.1rem;
+  align-self:center;
+}
+/* Range track */
+.mle-precision-lock__track-wrap{
+  margin:12px 0 8px;
+}
+.mle-plk-track-labels-top,
+.mle-plk-track-labels-bottom{
+  display:flex;
+  justify-content:space-between;
+  font-size:10px;
+  color:#94a3b8;
+  padding:0 2px;
+}
+.mle-plk-track-labels-top{
+  margin-bottom:3px;
+}
+.mle-plk-track-labels-bottom{
+  margin-top:3px;
+}
+.mle-plk-track{
+  position:relative;
+  height:24px;
+}
+.mle-plk-track__bar{
+  position:absolute;
+  top:9px;
+  left:0;
+  right:0;
+  height:6px;
+  background:#e2e8f0;
+  border-radius:4px;
+}
+.mle-plk-track__zone{
+  position:absolute;
+  top:9px;
+  height:6px;
+  background:#3b82f6;
+  border-radius:4px;
+  opacity:.55;
+  min-width:4px;
+}
+.mle-plk-track__sweet{
+  position:absolute;
+  top:7px;
+  height:10px;
+  background:#16a34a;
+  border-radius:4px;
+  opacity:.88;
+  min-width:4px;
+}
+.mle-plk-track__marker{
+  position:absolute;
+  top:6px;
+  width:2px;
+  height:12px;
+  background:#1C66FF;
+  border-radius:2px;
+  transform:translateX(-50%);
+}
+.mle-plk-zone-info{
+  text-align:center;
+  margin-top:6px;
+}
+.mle-plk-zone-badge{
+  display:inline-block;
+  padding:3px 12px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+}
+.mle-plk-zone-badge--broad{ background:#dbeafe; color:#1e40af; }
+.mle-plk-zone-badge--narrow{ background:#fef3c7; color:#92400e; }
+.mle-plk-zone-badge--sweet{ background:#dcfce7; color:#166534; border:1px solid #86efac; }
+.mle-precision-lock__summary{
+  margin-top:10px;
+  font-size:.9rem;
+  color:#334155;
+  line-height:1.55;
+}
+@media(max-width:900px){
+  .mle-precision-lock__steps{flex-direction:column;}
+  .mle-plk-step--arrow{display:none;}
 }
 .mle-elite-cockpit .mle-visual-comparison{
   border:2px solid rgba(28,102,255,.18) !important;
