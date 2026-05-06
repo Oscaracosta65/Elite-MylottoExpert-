@@ -4018,9 +4018,10 @@ function mleAdvisoryResolveActualDrawPartsForVisual(array $perfRow, array $saved
             if (is_array($drawRow) && !empty($drawRow)) {
                 $officialParts = mleAdvisoryExtractActualPartsFromOfficialRow($db, $gameId, $perfRow, $savedRow, $predMain, $predExtra, $drawRow);
                 if (!empty($officialParts['main'])) { $main = array_values(array_map('intval', (array)$officialParts['main'])); }
-                // Always overwrite extra with official draw result. Never use JSON-stored extras
-                // as they may be wrong candidates rather than the true drawn bonus balls.
-                if (isset($officialParts['extra'])) { $extra = array_values(array_map('intval', (array)$officialParts['extra'])); }
+                // Only overwrite extras when the official draw actually found them.
+                // Using !empty prevents clearing valid extras already parsed from JSON when
+                // the official draw row query returns an empty extra array.
+                if (!empty($officialParts['extra'])) { $extra = array_values(array_map('intval', (array)$officialParts['extra'])); }
             }
         } catch (\Throwable $e) { }
     }
@@ -27034,6 +27035,37 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
   background-image:none !important;
   border-color:#9F1117 !important;
   color:#FFFFFF !important;
+  text-shadow:none !important;
+}
+</style>
+<style>
+/* MLE v14 extra-ball hit distinction. Un-hit extra balls show as muted red. Hit extra balls show as fully bright red so the user can instantly see which bonus numbers matched. */
+/* Extra label badge: always fully red */
+.mle-elite-cockpit .mle-ball-set__extra .mle-extra-label {
+  background:#D71920 !important;
+  background-image:none !important;
+  border-color:#9F1117 !important;
+  color:#FFFFFF !important;
+}
+/* Un-hit extra balls (predicted and actual): muted/lighter red */
+.mle-elite-cockpit .mle-ball-list--extra .mle-ball,
+.mle-elite-cockpit .mle-ball--extra,
+.mle-elite-cockpit .mle-ball--actual.mle-ball--extra {
+  background:#F87171 !important;
+  background-image:none !important;
+  border-color:#EF4444 !important;
+  color:#FFFFFF !important;
+  text-shadow:none !important;
+}
+/* Hit extra balls (predicted and actual): fully bright red */
+.mle-elite-cockpit .mle-ball-list--extra .mle-ball.mle-ball--match,
+.mle-elite-cockpit .mle-ball--extra.mle-ball--match,
+.mle-elite-cockpit .mle-ball--actual.mle-ball--extra.mle-ball--match {
+  background:#D71920 !important;
+  background-image:none !important;
+  border-color:#9F1117 !important;
+  color:#FFFFFF !important;
+  box-shadow:0 6px 16px rgba(215,25,32,.5) !important;
   text-shadow:none !important;
 }
 </style>
