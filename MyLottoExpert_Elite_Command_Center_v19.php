@@ -12203,6 +12203,18 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
       $__advLnameRaw = 'Lottery ID ' . $__advLid;
   }
   $__advLname = htmlspecialchars($__advLnameRaw, ENT_QUOTES, 'UTF-8');
+  $__advNameParts = preg_split('/\s*-\s*/', $__advLnameRaw);
+  $__advLogoState = (count((array)$__advNameParts) >= 3) ? trim((string)$__advNameParts[1]) : '';
+  $__advLogoGame = (count((array)$__advNameParts) >= 3) ? trim((string)$__advNameParts[2]) : $__advLnameRaw;
+  $__advLogo = buildLotteryLogoPath((string)$__advLogoState, (string)$__advLogoGame);
+  $__advInitials = '';
+  foreach ((array)preg_split('/\s+/', (string)$__advLogoGame) as $__advWord) {
+      if ($__advWord === '') { continue; }
+      $__advInitials .= mb_strtoupper(mb_substr($__advWord, 0, 1, 'UTF-8'), 'UTF-8');
+      if (mb_strlen($__advInitials, 'UTF-8') >= 2) { break; }
+  }
+  if ($__advInitials === '') { $__advInitials = 'LE'; }
+  $__advLogoAlt = htmlspecialchars((string)($__advLogo['alt'] ?? ($__advLogoGame . ' logo')), ENT_QUOTES, 'UTF-8');
   $__advTopM = (array)($__advCard['top_method'] ?? array());
   $__advSAdv = (array)($__advCard['settings_advice'] ?? array());
   $__advPL = (array)($__advCard['proof_level'] ?? array());
@@ -12274,7 +12286,13 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   <div class="mle-advisory-card__collapsed">
     <div class="mle-advisory-card__collapsed-left">
       <div class="mle-card-title-block">
-        <h3 class="mle-advisory-card__lottery-name"><?php echo $__advLname; ?></h3>
+        <div class="mle-advisory-card__lottery-ident">
+          <?php if (!empty($__advLogo['path']) && !empty($__advLogo['exists'])): ?>
+          <img class="mle-advisory-card__logo" src="<?php echo htmlspecialchars((string)$__advLogo['path'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo $__advLogoAlt; ?>" loading="lazy" onerror="this.style.display='none';var s=this.nextElementSibling;if(s){s.style.display='inline-flex';}">
+          <?php endif; ?>
+          <span class="mle-advisory-card__logo-fallback" <?php if (!empty($__advLogo['path']) && !empty($__advLogo['exists'])): ?>style="display:none"<?php endif; ?>><?php echo htmlspecialchars((string)$__advInitials, ENT_QUOTES, 'UTF-8'); ?></span>
+          <h3 class="mle-advisory-card__lottery-name"><?php echo $__advLname; ?></h3>
+        </div>
         <div class="mle-card-title-subtitle">Lottery optimization workspace</div>
       </div>
       <div class="mle-advisory-card__collapsed-meta">
@@ -12968,13 +12986,45 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   border:1px solid rgba(10,26,51,.12) !important;
   border-radius:24px !important;
   background:#fff !important;
-  overflow:visible !important;
+  overflow:hidden !important;
   box-shadow:0 22px 65px rgba(10,26,51,.10) !important;
+}
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="false"]){
+  border-color:rgba(28,102,255,.55) !important;
+  box-shadow:0 24px 70px rgba(28,102,255,.20) !important;
 }
 .mle-elite-cockpit .mle-advisory-card__collapsed{
   background:linear-gradient(180deg,#FFFFFF 0%,#F8FAFC 100%) !important;
   border-bottom:1px solid rgba(127,141,170,.16);
   padding:22px 24px !important;
+}
+.mle-advisory-card__lottery-ident{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.mle-advisory-card__logo{
+  width:64px;
+  height:40px;
+  object-fit:contain;
+  border-radius:10px;
+  background:#fff;
+  border:1px solid rgba(127,141,170,.28);
+  padding:5px 6px;
+}
+.mle-advisory-card__logo-fallback{
+  width:40px;
+  height:40px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+  background:linear-gradient(135deg,#0A1A33 0%,#1C66FF 100%);
+  color:#fff;
+  font-size:.82rem;
+  font-weight:900;
+  letter-spacing:.06em;
+  flex-shrink:0;
 }
 .mle-elite-cockpit .mle-advisory-card__lottery-name{
   font-size:clamp(1.45rem,2.4vw,2.05rem) !important;
@@ -13033,10 +13083,12 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   display:flex;
   flex-wrap:wrap;
   gap:8px;
+  counter-reset:shortcut-step;
 }
 .mle-section-shortcut-btn{
   display:inline-flex;
   align-items:center;
+  gap:6px;
   border-radius:999px;
   border:1px solid rgba(127,141,170,.32);
   background:#fff;
@@ -13046,6 +13098,20 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   letter-spacing:.01em;
   padding:7px 11px;
   cursor:pointer;
+}
+.mle-section-shortcut-btn::before{
+  counter-increment:shortcut-step;
+  content:counter(shortcut-step);
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  background:#e2e8f0;
+  color:#334155;
+  font-size:.68rem;
+  font-weight:900;
 }
 .mle-section-shortcut-btn:hover{
   border-color:rgba(28,102,255,.45);
@@ -13057,6 +13123,70 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   border-color:transparent;
   color:#fff;
   box-shadow:0 12px 26px rgba(28,102,255,.22);
+}
+.mle-section-shortcut-btn.is-active::before,
+.mle-section-shortcut-btn[aria-current="true"]::before{
+  background:rgba(255,255,255,.22);
+  color:#fff;
+}
+.mle-advisory-card__collapsed-meta{
+  gap:8px;
+}
+.mle-advisory-card__collapsed-meta .mle-adv-meta-item{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  border:1px solid rgba(127,141,170,.28);
+  background:#fff;
+  border-radius:999px;
+  padding:5px 10px;
+  font-size:.82rem;
+  line-height:1.2;
+}
+.mle-advisory-card__collapsed-meta .mle-adv-meta-label{
+  font-size:.7rem;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:#64748b;
+  font-weight:800;
+}
+.mle-advisory-card__collapsed-meta .mle-adv-meta-sep{
+  display:none;
+}
+.mle-elite-cockpit .mle-proof-badge{
+  font-size:.72rem !important;
+  font-weight:900 !important;
+  letter-spacing:.07em !important;
+  text-transform:uppercase;
+  border-radius:999px !important;
+  padding:4px 10px !important;
+}
+.mle-elite-cockpit .mle-proof-badge--too-early,
+.mle-elite-cockpit .mle-proof-badge--no-clear-winner{
+  background:#e2e8f0 !important;
+  color:#334155 !important;
+  border-color:#cbd5e1 !important;
+}
+.mle-elite-cockpit .mle-proof-badge--early-clue{
+  background:#dbeafe !important;
+  color:#1d4ed8 !important;
+  border-color:#93c5fd !important;
+}
+.mle-elite-cockpit .mle-proof-badge--good-test,
+.mle-elite-cockpit .mle-proof-badge--close-race{
+  background:#fef3c7 !important;
+  color:#92400e !important;
+  border-color:#fcd34d !important;
+}
+.mle-elite-cockpit .mle-proof-badge--strong-pattern{
+  background:#ffedd5 !important;
+  color:#9a3412 !important;
+  border-color:#fb923c !important;
+}
+.mle-elite-cockpit .mle-proof-badge--trusted-recipe{
+  background:#dcfce7 !important;
+  color:#166534 !important;
+  border-color:#86efac !important;
 }
 .mle-lottery-command-hero__steps{
   display:grid;
@@ -29684,6 +29814,8 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
     var card = closestCard(btn);
     if(card && open && el.getAttribute && el.getAttribute('data-mle-primary-section-body') === '1'){
       collapseOtherPrimarySections(card, id);
+      setShortcutActive(card, id);
+    } else if(card && open){
       setShortcutActive(card, id);
     } else if(card && !open){
       setShortcutActive(card, '');
