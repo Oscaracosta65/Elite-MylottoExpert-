@@ -12710,10 +12710,10 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 .mle-advisory-board__title{font-size:clamp(1.65rem,2.6vw,2.35rem);letter-spacing:-.03em;color:#0A1A33;margin:.15rem 0 .35rem;}
 .mle-advisory-board__subtitle{max-width:980px;color:#334155;line-height:1.55;}
 .mle-elite-cockpit .mle-advisory-card{border-radius:20px;margin:1.15rem 0;border:1px solid rgba(10,26,51,.12);box-shadow:0 18px 42px rgba(10,26,51,.08);}
-.mle-advisory-card__collapsed{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:18px 20px;background:#fff;}
+.mle-advisory-card__collapsed{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:18px 20px;background:linear-gradient(180deg,#EFEFF5 0%,#FFFFFF 100%);border-bottom:1px solid rgba(127,141,170,.22);}
 .mle-card-title-block{display:block;}
-.mle-advisory-card__lottery-name{font-size:clamp(1.15rem,2.1vw,1.55rem);line-height:1.15;margin:0;color:#0A1A33;letter-spacing:-.02em;}
-.mle-card-title-subtitle{font-size:.78rem;color:#7F8DAA;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-top:4px;}
+.mle-advisory-card__lottery-name{font-size:clamp(1.15rem,2.1vw,1.55rem);line-height:1.15;margin:0;color:#0A1A33;letter-spacing:-.02em;font-family:"Inter","SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;}
+.mle-card-title-subtitle{font-size:.78rem;color:#7F8DAA;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-top:4px;font-family:"Inter","SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;}
 .mle-advisory-card__collapsed-meta{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:10px;color:#334155;font-size:.9rem;}
 .mle-adv-meta-sep{color:#CBD5E1;}
 .mle-card-roof-map{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
@@ -12732,6 +12732,40 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 .mle-next-settings-run__disabled{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:12px;color:#fff;}
 .mle-lottery-toggle,.mle-section-toggle{box-shadow:0 4px 12px rgba(10,26,51,.06);}
 .mle-lottery-toggle{min-width:92px;}
+.mle-elite-cockpit .mle-advisory-card__collapsed .mle-lottery-toggle{
+  background:linear-gradient(180deg,#FFFFFF 0%,#EFEFF5 100%);
+  border:1px solid rgba(127,141,170,.34);
+  color:#0A1A33;
+  font-family:"Inter","SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;
+  box-shadow:0 8px 20px rgba(10,26,51,.08);
+}
+.mle-elite-cockpit .mle-advisory-card__collapsed .mle-lottery-toggle[aria-expanded="false"]{
+  background:linear-gradient(135deg,#0A1A33 0%,#1C66FF 100%);
+  color:#FFFFFF;
+  border-color:transparent;
+  box-shadow:0 12px 28px rgba(28,102,255,.30);
+}
+.mle-elite-cockpit .mle-advisory-card__collapsed .mle-lottery-toggle[aria-expanded="true"]{
+  background:linear-gradient(180deg,#FFFFFF 0%,#EFEFF5 100%);
+  color:#0A1A33;
+}
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed{
+  background:linear-gradient(135deg,#0A1A33 0%,#1C66FF 100%);
+  border-bottom-color:rgba(255,255,255,.20);
+}
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__lottery-name,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-card-title-subtitle,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed-meta,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed-meta .mle-adv-meta-label,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed-meta strong,
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-advisory-card__collapsed-meta span{
+  color:#FFFFFF !important;
+}
+.mle-elite-cockpit .mle-advisory-card:has(.mle-advisory-card__body[aria-hidden="true"]) .mle-card-roof-map span{
+  background:rgba(255,255,255,.10);
+  border-color:rgba(255,255,255,.25);
+  color:#FFFFFF;
+}
 .mle-visual-comparison{background:#fff;border-color:rgba(10,26,51,.10);}
 .mle-visual-comparison h4{font-size:1.15rem;margin:0;color:#0A1A33;}
 .mle-visual-group h5{margin:12px 0 8px;color:#0A1A33;font-size:.95rem;}
