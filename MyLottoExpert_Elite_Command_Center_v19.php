@@ -23931,7 +23931,7 @@ $__lpFmtRankColor = function($v) {
               if ($__lpHIdx === $__lpSysRowIdx)  { $__lpHBadges .= '<span class="lp-run-badge lp-run-badge--sys">Rank best</span>'; }
               if ($__lpHIdx === $__lpHitRowIdx)  { $__lpHBadges .= '<span class="lp-run-badge lp-run-badge--hit">Hit best</span>'; }
               if ($__lpHIdx === $__lpRecRowIdx)  { $__lpHBadges .= '<span class="lp-run-badge lp-run-badge--rec">Rec</span>'; }
-              if ($__lpHIdx === $__lpWorstRowIdx){ $__lpHBadges .= '<span style="font-size:0.9rem;" title="Worst overall avg rank">&#x1F534;</span>'; }
+              if ($__lpHIdx === $__lpWorstRowIdx){ $__lpHBadges .= '<span style="font-size:0.75rem;" title="Worst overall avg rank">Worst</span>'; }
               if ($__lpHBadges === '')            { $__lpHBadges = '<span style="color:#cbd5e1;font-size:0.75rem;">-</span>'; }
             ?>
             <tr class="<?php echo $__lpHRowCls; ?>">
