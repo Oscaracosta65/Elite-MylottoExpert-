@@ -12323,19 +12323,45 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 
     <?php if (!empty($__advBClean) && !empty($__advBClean['has_recommendation'])):
       $__advClKeep = (array)($__advBClean['keep'] ?? array()); $__advClReview = (array)($__advBClean['review'] ?? array()); $__advClArch = (array)($__advBClean['archive'] ?? array());
+      $__rsTotal = count($__advClKeep) + count($__advClReview) + count($__advClArch);
     ?>
     <section class="mle-batch-cleanup" id="<?php echo $__advEvidencePanelId; ?>">
       <div class="mle-batch-cleanup__title">Run Selection for Better Advice</div>
-      <p>LottoExpert has reviewed your saved runs and sorted them into three groups based on how well their numbers matched actual draws. Review each group below, then apply or leave as is.</p>
+
+      <!-- Guidance / criteria callout -->
+      <details class="mle-rs-guide">
+        <summary class="mle-rs-guide__summary">&#9432; How does LottoExpert decide? What should I do?</summary>
+        <div class="mle-rs-guide__body">
+          <p><strong>How the groups are determined:</strong> After each draw LottoExpert scores your saved runs against the actual winning numbers. Runs are ranked from most hits to fewest. The top-ranked runs go into <em>Use for future advice</em>, mid-ranked runs go to <em>Keep for review</em>, and the lowest-ranked runs go to <em>Do not use for advice</em>. Runs without a completed draw date cannot be scored yet and appear as &ldquo;Upcoming.&rdquo;</p>
+          <p><strong>What each group does:</strong></p>
+          <ul class="mle-rs-guide__list">
+            <li><strong>&#10003; Use for future advice</strong> &mdash; These runs will guide the next prediction. LottoExpert weighs their settings and numbers more heavily. Keep 2&ndash;3 of your strongest performers here.</li>
+            <li><strong>&#9711; Keep for review</strong> &mdash; These runs are on hold. They will not steer future advice but remain on record so you can revisit them. Useful for runs that had mixed results or not enough draws to judge.</li>
+            <li><strong>&#215; Do not use for advice</strong> &mdash; These runs are excluded from future predictions. <em>They are not deleted</em> &mdash; you can still see them and their history. This is simply a way to tell LottoExpert &ldquo;ignore this approach for now.&rdquo;</li>
+          </ul>
+          <?php if ($__rsTotal > 10): ?>
+          <p><strong>You have <?php echo $__rsTotal; ?> runs.</strong> With many runs it is best to keep only the top 2&ndash;3 for advice. The rest can go to review or archive so LottoExpert focuses on what has actually been working. You can always change a run&rsquo;s status later using the individual buttons below.</p>
+          <?php else: ?>
+          <p><strong>Tip:</strong> If you disagree with where a run was placed, use the individual buttons on each run to override it. You can move any run to a different group at any time.</p>
+          <?php endif; ?>
+          <p><strong>Applying vs. leaving as is:</strong> Until you click a button, nothing changes. Clicking <em>Accept</em> on a single run sets only that run&rsquo;s status. Clicking <em>Apply All</em> at the bottom sets every run in one action.</p>
+        </div>
+      </details>
 
       <?php
-        // Helper: render a compact run summary line for the run-selection groups
-        $__rsRenderRun = function(array $__r) {
+        $__csrfToken = \Joomla\CMS\HTML\HTMLHelper::_('form.token');
+        // Helper: render one run card with an inline accept button.
+        // $__rsGroup = 'keep' | 'review' | 'archive'
+        $__rsRenderRun = function(array $__r, string $__rsGroup) use ($__advLid, $__csrfToken) {
           $__rsLabel   = htmlspecialchars((string)($__r['label']        ?? 'Saved run'), ENT_QUOTES, 'UTF-8');
           $__rsMethod  = htmlspecialchars((string)($__r['method_label'] ?? ''), ENT_QUOTES, 'UTF-8');
           $__rsDate    = htmlspecialchars((string)($__r['draw_date']    ?? ''), ENT_QUOTES, 'UTF-8');
           $__rsHits    = (int)($__r['total_hits']  ?? 0);
+          $__rsMainH   = (int)($__r['main_hits']   ?? 0);
+          $__rsExtraH  = (int)($__r['extra_hits']  ?? 0);
           $__rsDone    = !empty($__r['completed']);
+          $__rsPerfId  = (int)($__r['perf_id']     ?? 0);
+          $__rsSavedId = (int)($__r['saved_id']    ?? 0);
           $__rsNums    = mleAdvisoryRenderBallSetHtml(
             (array)($__r['predicted']       ?? array()),
             (array)($__r['predicted_extra'] ?? array()),
@@ -12343,17 +12369,69 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
             (array)($__r['extra_matches']   ?? array()),
             false
           );
+          $__rsActual  = ($__rsDone && (!empty($__r['actual']) || !empty($__r['actual_extra'])))
+            ? mleAdvisoryRenderBallSetHtml(
+                (array)($__r['actual']        ?? array()),
+                (array)($__r['actual_extra']  ?? array()),
+                (array)($__r['matches']       ?? array()),
+                (array)($__r['extra_matches'] ?? array()),
+                true
+              )
+            : '';
+
+          // Accept button label and hidden field name per group
+          if ($__rsGroup === 'keep') {
+            $__rsFieldName  = 'keep_ids[]';
+            $__rsAcceptBtn  = '&#10003; Confirm: keep for advice';
+            $__rsAcceptCss  = 'mle-rs-accept-btn mle-rs-accept-btn--keep';
+          } elseif ($__rsGroup === 'review') {
+            $__rsFieldName  = 'watch_ids[]';
+            $__rsAcceptBtn  = '&#9711; Confirm: keep for review';
+            $__rsAcceptCss  = 'mle-rs-accept-btn mle-rs-accept-btn--review';
+          } else {
+            $__rsFieldName  = 'retire_ids[]';
+            $__rsAcceptBtn  = '&#215; Confirm: remove from advice';
+            $__rsAcceptCss  = 'mle-rs-accept-btn mle-rs-accept-btn--archive';
+          }
+
           echo '<div class="mle-rs-run">';
+          // Header: label + hits
+          echo '<div class="mle-rs-run__header">';
           echo '<div class="mle-rs-run__info">';
           echo '<strong>' . $__rsLabel . '</strong>';
           echo '<span>' . $__rsMethod . ($__rsDate !== '' ? ' &mdash; draw ' . $__rsDate : '') . '</span>';
           if ($__rsDone) {
-            echo '<span class="mle-rs-run__hits">' . $__rsHits . ' hit' . ($__rsHits !== 1 ? 's' : '') . ' matched</span>';
+            $__rsHitDetail = $__rsMainH . ' main' . ($__rsExtraH > 0 ? ' + ' . $__rsExtraH . ' extra' : '');
+            echo '<span class="mle-rs-run__hits">' . $__rsHits . ' hit' . ($__rsHits !== 1 ? 's' : '') . ' matched (' . $__rsHitDetail . ')</span>';
           } else {
-            echo '<span class="mle-rs-run__hits mle-rs-run__hits--upcoming">Upcoming draw</span>';
+            echo '<span class="mle-rs-run__hits mle-rs-run__hits--upcoming">Upcoming draw — not yet scored</span>';
           }
           echo '</div>';
-          echo '<div class="mle-rs-run__balls">' . $__rsNums . '</div>';
+          // Per-run accept form (only when there is a perf record to update)
+          if ($__rsPerfId > 0) {
+            echo '<form method="post" class="mle-rs-run__accept-form">'
+              . '<input type="hidden" name="mle_action" value="apply_evidence_choices">'
+              . '<input type="hidden" name="lottery_id" value="' . (int)$__advLid . '">'
+              . '<input type="hidden" name="' . htmlspecialchars($__rsFieldName, ENT_QUOTES, 'UTF-8') . '" value="' . $__rsPerfId . '">'
+              . $__csrfToken
+              . '<button type="submit" class="' . $__rsAcceptCss . '">' . $__rsAcceptBtn . '</button>'
+              . '</form>';
+          }
+          echo '</div>';
+          // Balls
+          echo '<div class="mle-rs-run__balls"><span class="mle-visual-label">Your numbers</span>' . $__rsNums . '</div>';
+          if ($__rsActual !== '') {
+            echo '<div class="mle-rs-run__balls"><span class="mle-visual-label">Actual draw</span>' . $__rsActual . '</div>';
+          }
+          // Delete button (for archive group)
+          if ($__rsGroup === 'archive' && $__rsSavedId > 0) {
+            echo '<div class="mle-rs-run__delete">'
+              . '<form method="post" class="mle-inline-action mle-inline-action--delete">'
+              . '<input type="hidden" name="delete_set" value="' . $__rsSavedId . '">'
+              . $__csrfToken
+              . '<button type="submit">Delete this run permanently</button>'
+              . '</form></div>';
+          }
           echo '</div>';
         };
       ?>
@@ -12364,10 +12442,10 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <div class="mle-rs-group mle-rs-group--keep">
           <div class="mle-rs-group__header">
             <span class="mle-rs-group__badge mle-rs-group__badge--keep">&#10003; Use for future advice &mdash; <?php echo count($__advClKeep); ?> run<?php echo count($__advClKeep) !== 1 ? 's' : ''; ?></span>
-            <p class="mle-rs-group__reason">These are your <strong>strongest runs</strong>. They matched the most actual draw numbers and will continue to guide the next prediction. Keeping them tells LottoExpert &ldquo;these approaches worked best.&rdquo;</p>
+            <p class="mle-rs-group__reason">These are your <strong>strongest runs</strong> &mdash; they matched the most actual draw numbers. LottoExpert will continue to use them to shape future predictions. Use the <em>Confirm</em> button on any run you want to lock in, or use <em>Apply All</em> below to accept all suggestions at once.</p>
           </div>
           <div class="mle-rs-group__runs">
-            <?php foreach ($__advClKeep as $__r): $__rsRenderRun($__r); endforeach; ?>
+            <?php foreach ($__advClKeep as $__r): $__rsRenderRun($__r, 'keep'); endforeach; ?>
           </div>
         </div>
         <?php endif; ?>
@@ -12376,10 +12454,10 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <div class="mle-rs-group mle-rs-group--review">
           <div class="mle-rs-group__header">
             <span class="mle-rs-group__badge mle-rs-group__badge--review">&#9711; Keep for review &mdash; <?php echo count($__advClReview); ?> run<?php echo count($__advClReview) !== 1 ? 's' : ''; ?></span>
-            <p class="mle-rs-group__reason">These are <strong>moderate performers</strong>. They had some hits but not enough to lead. They stay on record so you can compare them later but they will not steer the next advice.</p>
+            <p class="mle-rs-group__reason">These are <strong>moderate performers</strong>. They had some hits but not enough to lead. They are paused &mdash; they will not steer the next prediction but remain in your history so you can revisit them. Confirm each one you agree with, or use <em>Apply All</em>.</p>
           </div>
           <div class="mle-rs-group__runs">
-            <?php foreach ($__advClReview as $__r): $__rsRenderRun($__r); endforeach; ?>
+            <?php foreach ($__advClReview as $__r): $__rsRenderRun($__r, 'review'); endforeach; ?>
           </div>
         </div>
         <?php endif; ?>
@@ -12388,10 +12466,10 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <div class="mle-rs-group mle-rs-group--archive">
           <div class="mle-rs-group__header">
             <span class="mle-rs-group__badge mle-rs-group__badge--archive">&#215; Do not use for advice &mdash; <?php echo count($__advClArch); ?> run<?php echo count($__advClArch) !== 1 ? 's' : ''; ?></span>
-            <p class="mle-rs-group__reason">These runs had the <strong>fewest hits</strong> against actual draws. Removing them from advice keeps the focus on what has been working. You can still view them here; they are not deleted.</p>
+            <p class="mle-rs-group__reason">These runs had the <strong>fewest hits</strong>. Excluding them from advice keeps the focus on what has been working. <em>They are not deleted</em> &mdash; they stay in your history. Click <em>Confirm: remove from advice</em> to accept the suggestion. If you also want to permanently delete a run, use the red <em>Delete</em> button below it.</p>
           </div>
           <div class="mle-rs-group__runs">
-            <?php foreach ($__advClArch as $__r): $__rsRenderRun($__r); endforeach; ?>
+            <?php foreach ($__advClArch as $__r): $__rsRenderRun($__r, 'archive'); endforeach; ?>
           </div>
         </div>
         <?php endif; ?>
@@ -12399,17 +12477,19 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
       </div><!-- /.mle-rs-groups -->
 
       <?php if (!MLE_DEMO_MODE): ?>
-      <form method="post" class="mle-advisory-actions">
-        <input type="hidden" name="mle_action" value="apply_evidence_choices">
-        <input type="hidden" name="lottery_id" value="<?php echo $__advLid; ?>">
-        <?php foreach ($__advClKeep as $__r): if (!empty($__r['perf_id'])): ?><input type="hidden" name="keep_ids[]" value="<?php echo (int)$__r['perf_id']; ?>"><?php endif; endforeach; ?>
-        <?php foreach ($__advClReview as $__r): if (!empty($__r['perf_id'])): ?><input type="hidden" name="watch_ids[]" value="<?php echo (int)$__r['perf_id']; ?>"><?php endif; endforeach; ?>
-        <?php foreach ($__advClArch as $__r): if (!empty($__r['perf_id'])): ?><input type="hidden" name="retire_ids[]" value="<?php echo (int)$__r['perf_id']; ?>"><?php endif; endforeach; ?>
-        <?php echo \Joomla\CMS\HTML\HTMLHelper::_('form.token'); ?>
-        <button type="submit" class="mle-advisory-btn mle-advisory-btn--primary">Apply Run Selection</button>
-        <button type="button" class="mle-advisory-btn mle-advisory-btn--secondary mle-review-runs-btn" data-target-panel="<?php echo $__advRunsBodyId; ?>">Review Runs</button>
-        <button type="button" class="mle-advisory-btn mle-advisory-btn--ghost mle-leave-as-is-btn" data-target-panel="<?php echo $__advEvidencePanelId; ?>">Leave as is</button>
-      </form>
+      <div class="mle-rs-apply-all">
+        <p class="mle-rs-apply-all__note">Want to apply all suggestions at once?</p>
+        <form method="post" class="mle-advisory-actions">
+          <input type="hidden" name="mle_action" value="apply_evidence_choices">
+          <input type="hidden" name="lottery_id" value="<?php echo $__advLid; ?>">
+          <?php foreach ($__advClKeep as $__r): if (!empty($__r['perf_id'])): ?><input type="hidden" name="keep_ids[]" value="<?php echo (int)$__r['perf_id']; ?>"><?php endif; endforeach; ?>
+          <?php foreach ($__advClReview as $__r): if (!empty($__r['perf_id'])): ?><input type="hidden" name="watch_ids[]" value="<?php echo (int)$__r['perf_id']; ?>"><?php endif; endforeach; ?>
+          <?php foreach ($__advClArch as $__r): if (!empty($__r['perf_id'])): ?><input type="hidden" name="retire_ids[]" value="<?php echo (int)$__r['perf_id']; ?>"><?php endif; endforeach; ?>
+          <?php echo \Joomla\CMS\HTML\HTMLHelper::_('form.token'); ?>
+          <button type="submit" class="mle-advisory-btn mle-advisory-btn--primary">Apply All Suggestions</button>
+          <button type="button" class="mle-advisory-btn mle-advisory-btn--ghost mle-leave-as-is-btn" data-target-panel="<?php echo $__advEvidencePanelId; ?>">Leave as is</button>
+        </form>
+      </div>
       <?php endif; ?>
     </section>
     <?php endif; ?>
@@ -13112,12 +13192,32 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 .mle-rs-group__reason{margin:4px 0 0;font-size:.83rem;color:#475569;line-height:1.5;}
 .mle-rs-group__runs{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
 .mle-rs-run{border:1px solid rgba(127,141,170,.18);border-radius:10px;padding:10px 12px;background:#fff;}
-.mle-rs-run__info{margin-bottom:6px;}
+.mle-rs-run__header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+.mle-rs-run__info{flex:1;}
 .mle-rs-run__info strong{display:block;font-size:.88rem;font-weight:900;color:#0A1A33;}
 .mle-rs-run__info span{display:block;font-size:.78rem;color:#7F8DAA;margin-top:1px;}
 .mle-rs-run__hits{display:inline-block;margin-top:3px;font-size:.78rem;font-weight:800;padding:2px 8px;border-radius:999px;background:#e0f2fe;color:#0369a1;}
 .mle-rs-run__hits--upcoming{background:#f1f5f9;color:#64748b;}
-.mle-rs-run__balls{margin-top:6px;}
+.mle-rs-run__balls{margin-top:4px;margin-bottom:4px;}
+.mle-rs-run__delete{margin-top:6px;padding-top:6px;border-top:1px solid rgba(127,141,170,.12);}
+.mle-rs-run__accept-form{flex-shrink:0;}
+/* Per-run accept buttons */
+.mle-rs-accept-btn{display:inline-flex;align-items:center;font-size:.75rem;font-weight:800;padding:5px 10px;border-radius:999px;border:1.5px solid;cursor:pointer;white-space:nowrap;line-height:1.2;}
+.mle-rs-accept-btn:hover{opacity:.85;}
+.mle-rs-accept-btn--keep{background:#d1fae5;color:#065f46;border-color:#6ee7b7;}
+.mle-rs-accept-btn--review{background:#fef3c7;color:#92400e;border-color:#fcd34d;}
+.mle-rs-accept-btn--archive{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+/* Apply-all footer */
+.mle-rs-apply-all{margin-top:16px;padding-top:14px;border-top:1px solid rgba(127,141,170,.18);}
+.mle-rs-apply-all__note{font-size:.82rem;color:#64748b;margin:0 0 8px;}
+/* Guidance callout */
+.mle-rs-guide{border:1px solid rgba(127,141,170,.22);border-radius:12px;background:#f8fafc;margin:10px 0 16px;overflow:hidden;}
+.mle-rs-guide__summary{list-style:none;cursor:pointer;padding:10px 14px;font-size:.83rem;font-weight:800;color:#1C66FF;user-select:none;}
+.mle-rs-guide__summary::-webkit-details-marker{display:none;}
+.mle-rs-guide__body{padding:2px 14px 12px;font-size:.82rem;color:#334155;line-height:1.55;}
+.mle-rs-guide__body p{margin:.5rem 0;}
+.mle-rs-guide__list{margin:.4rem 0 .4rem 1.1rem;padding:0;}
+.mle-rs-guide__list li{margin-bottom:.35rem;}
 
 /* -- Advanced Details table --------------------------------------------- */
 .mle-adv-legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:10px 0 14px;font-size:.78rem;color:#475569;line-height:1.45;}
