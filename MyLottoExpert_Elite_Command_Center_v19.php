@@ -13024,6 +13024,1497 @@ if (empty($wheelingSystems)) {
 unset($__wsDropItem);
 ?>
 
+
+<?php
+function mylottoexpertLoadLotterySpec($gameId)
+{
+    static $__mleSpecCache = array();
+
+    $gameId = strtoupper(trim((string)$gameId));
+    if ($gameId === '') {
+        return array();
+    }
+    if (isset($__mleSpecCache[$gameId])) {
+        return $__mleSpecCache[$gameId];
+    }
+
+    $result = array();
+
+    $masterPath = JPATH_ROOT . '/lottery_skip_config.json';
+    $__masterCfg  = null;
+    $__masterSpec = null;
+    if (is_file($masterPath)) {
+        $raw = json_decode(file_get_contents($masterPath), true);
+        if (json_last_error() === JSON_ERROR_NONE && !empty($raw['lotteries'][$gameId]) && is_array($raw['lotteries'][$gameId])) {
+            $spec = $raw['lotteries'][$gameId];
+            $cfg  = isset($spec['lotteryConfig']) && is_array($spec['lotteryConfig']) ? $spec['lotteryConfig'] : array();
+            if (!isset($cfg['is_daily'])) {
+                $cfg['is_daily'] = false;
+            }
+            $__masterDbCol = (string)($spec['dbCol'] ?? '');
+            if ($__masterDbCol !== '') {
+                // [MASTER-PATH] dbCol found in master config: return immediately.
+                $result = array(
+                    'dbCol'         => $__masterDbCol,
+                    'lotteryConfig' => $cfg,
+                    'raw'           => $spec,
+                );
+                $__mleSpecCache[$gameId] = $result;
+                return $result;
+            }
+            // [FIX-DBCOL-FALLTHROUGH] dbCol is absent from the master config entry but the
+            // game IS registered there. Fall through to dailylotteries.json so tableName can
+            // be used as the dbCol fallback. Save the master lotteryConfig so its column
+            // mappings (main_ball_columns etc.) can be merged with the daily row below.
+            $__masterCfg  = $cfg;
+            $__masterSpec = $spec;
+        }
+    }
+
+    $dailyPath = JPATH_ROOT . '/dailylotteries.json';
+    if (!is_file($dailyPath)) {
+        $__mleSpecCache[$gameId] = array();
+        return array();
+    }
+
+    $dailyRaw = json_decode(file_get_contents($dailyPath), true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($dailyRaw)) {
+        $__mleSpecCache[$gameId] = array();
+        return array();
+    }
+
+    $dailyRow = null;
+    $candidates = array();
+    // [FIX-DAILY-WRAPPER] Support both wrapper shapes:
+    //  - {"lotteries": {... or [...]}}
+    //  - {"dailylotteries": [...]}
+    if (isset($dailyRaw['lotteries']) && is_array($dailyRaw['lotteries'])) {
+        $candidates[] = $dailyRaw['lotteries'];
+    }
+    if (isset($dailyRaw['dailylotteries']) && is_array($dailyRaw['dailylotteries'])) {
+        $candidates[] = $dailyRaw['dailylotteries'];
+    }
+    $candidates[] = $dailyRaw;
+
+    foreach ($candidates as $__pool) {
+        if (!is_array($__pool)) { continue; }
+        if (!empty($__pool[$gameId]) && is_array($__pool[$gameId])) {
+            $dailyRow = $__pool[$gameId];
+            break;
+        }
+        // [FIX-SKY-DAILY-LOOKUP] dailylotteries.json may store Sky Daily entries with lowercase
+        // keys (e.g. "ny_pick3_mid") while the canonical game_id is always uppercase
+        // ("NY_PICK3_MID"). SKAI's skaiDailyLoadByGameId (skai_daily_bridge.php) resolves this
+        // via case-insensitive lookup, but the uppercase-only direct key check above misses them.
+        // Add a lowercase direct key fallback so the entry is found without a full-pool scan.
+        $__lcKey = strtolower($gameId);
+        if ($__lcKey !== $gameId && !empty($__pool[$__lcKey]) && is_array($__pool[$__lcKey])) {
+            $dailyRow = $__pool[$__lcKey];
+            break;
+        }
+        // Inner loop: if neither uppercase nor lowercase direct key matched, scan every entry.
+        // [FIX-SKY-DAILY-LOOKUP] Also use the JSON key ($__iterKey) as a last-resort game_id
+        // when the row has no explicit "game_id"/"gameId"/"gid" field. Sky Daily entries in
+        // dailylotteries.json use the JSON key itself as the identifier without a separate
+        // "game_id" property, so without this fallback the entry is silently skipped.
+        foreach ($__pool as $__iterKey => $__row) {
+            if (!is_array($__row)) { continue; }
+            $__rowGameId = strtoupper(trim((string)($__row['game_id'] ?? $__row['gameId'] ?? $__row['gid'] ?? $__iterKey ?? '')));
+            if ($__rowGameId === $gameId) {
+                $dailyRow = $__row;
+                break 2;
+            }
+        }
+    }
+
+    if (!is_array($dailyRow)) {
+        $__mleSpecCache[$gameId] = array();
+        return array();
+    }
+
+    $dailyCfg = isset($dailyRow['lotteryConfig']) && is_array($dailyRow['lotteryConfig'])
+        ? $dailyRow['lotteryConfig']
+        : array();
+
+    foreach (array(
+        'pick_size'             => array('pick_size', 'pickSize', 'daily_pick_size', 'num_main_balls_drawn', 'mainNumbersDrawn'),
+        'num_extra_balls_drawn' => array('num_extra_balls_drawn', 'numExtraBallsDrawn', 'extra_ball_count', 'extraCount', 'extraBallCount'),
+        'main_ball_columns'     => array('main_ball_columns', 'mainBallColumns'),
+        'extra_ball_columns'    => array('extra_ball_columns', 'extraBallColumns'),
+        'extra_ball_column'     => array('extra_ball_column', 'extraBallColumn'),
+        'extra_ball_column_2'   => array('extra_ball_column_2', 'extraBallColumn2'),
+        'draw_session'          => array('draw_session', 'drawSession'),
+        'next_draw_at'          => array('next_draw_at', 'nextDrawAt'),
+    ) as $__targetKey => $__sourceKeys) {
+        if (array_key_exists($__targetKey, $dailyCfg) && $dailyCfg[$__targetKey] !== null && $dailyCfg[$__targetKey] !== '') {
+            continue;
+        }
+        foreach ($__sourceKeys as $__sourceKey) {
+            if (array_key_exists($__sourceKey, $dailyRow) && $dailyRow[$__sourceKey] !== null && $dailyRow[$__sourceKey] !== '') {
+                $dailyCfg[$__targetKey] = $dailyRow[$__sourceKey];
+                break;
+            }
+        }
+    }
+
+    if (empty($dailyCfg['extra_ball_columns']) && !empty($dailyCfg['extra_ball_column'])) {
+        $dailyCfg['extra_ball_columns'] = array((string)$dailyCfg['extra_ball_column']);
+    }
+    if (!isset($dailyCfg['is_daily'])) {
+        $dailyCfg['is_daily'] = true;
+    }
+
+    // [FIX-MAIN-BALL-COLUMNS] dailylotteries.json entries only carry pickSize, not
+    // main_ball_columns. Without column names the UNION ALL query emits NULL for every
+    // main ball and the draw is never resolved. Auto-derive the ordered column list from
+    // pickSize using the ordinal column names that the results table always has
+    // (first, second, third, fourth, fifth). This runs only when main_ball_columns has
+    // not been set explicitly by either the daily row or the master config.
+    if (empty($dailyCfg['main_ball_columns'])) {
+        $__ps = (int)($dailyCfg['pick_size'] ?? 0);
+        if ($__ps > 0) {
+            $__ordinals = array('first','second','third','fourth','fifth','sixth','seventh','eighth','nineth','tenth');
+            $dailyCfg['main_ball_columns'] = array_slice($__ordinals, 0, min($__ps, count($__ordinals)));
+        }
+    }
+
+    // [FIX-DBCOL-FALLTHROUGH] When the master config had this game but no dbCol, merge its
+    // lotteryConfig on top of the daily one so explicit column mappings, ball counts, and
+    // other settings from the master entry are preserved alongside the daily tableName.
+    if (is_array($__masterCfg)) {
+        foreach ($__masterCfg as $__mk => $__mv) {
+            if ($__mv !== null && $__mv !== '' && $__mv !== array()) {
+                $dailyCfg[$__mk] = $__mv;
+            }
+        }
+    }
+
+    $result = array(
+        'dbCol'         => (string)($dailyRow['dbCol'] ?? $dailyRow['tableName'] ?? $dailyRow['table_name'] ?? $dailyRow['table'] ?? ''),
+        'lotteryConfig' => $dailyCfg,
+        'raw'           => is_array($__masterSpec) ? array_merge((array)$dailyRow, $__masterSpec) : $dailyRow,
+    );
+
+    $__mleSpecCache[$gameId] = $result;
+    return $result;
+}
+
+function mylottoexpertHasCompletedDrawValues($gameId, array $row, array $lotteryCfg = array())
+{
+    $mainCols = isset($lotteryCfg['main_ball_columns']) && is_array($lotteryCfg['main_ball_columns'])
+        ? array_values(array_filter(array_map('strval', $lotteryCfg['main_ball_columns'])))
+        : array();
+
+    if (!empty($mainCols)) {
+        foreach ($mainCols as $__col) {
+            if (array_key_exists($__col, $row) && $row[$__col] !== null && $row[$__col] !== '') {
+                return true;
+            }
+        }
+    }
+
+    $extracted = function_exists('mylottoexpertExtractDrawNumbersFromRow')
+        ? mylottoexpertExtractDrawNumbersFromRow($gameId, $row)
+        : array('main' => array(), 'extra' => array());
+
+    $pickSize = (int)($lotteryCfg['pick_size'] ?? $lotteryCfg['daily_pick_size'] ?? $lotteryCfg['num_main_balls_drawn'] ?? 0);
+    $mainVals = isset($extracted['main']) && is_array($extracted['main']) ? $extracted['main'] : array();
+
+    if ($pickSize > 0) {
+        return count($mainVals) >= $pickSize;
+    }
+
+    return count($mainVals) > 0;
+}
+
+function mylottoexpertFormatDrawHeldLabel($row)
+{
+    if (!is_array($row) || empty($row)) {
+        return 'N/A';
+    }
+
+    $session = mylottoexpertNormalizeTargetSession($row['draw_session'] ?? $row['target_draw_session'] ?? '');
+    $drawAtCandidates = array(
+        $row['draw_date'] ?? null,
+        $row['next_draw_at'] ?? null,
+        $row['target_draw_at'] ?? null,
+    );
+
+    foreach ($drawAtCandidates as $__candidate) {
+        if ($__candidate === null || $__candidate === '') { continue; }
+        $__ts = strtotime((string)$__candidate);
+        if ($__ts === false) { continue; }
+        $__time = date('g:i A', $__ts);
+        if ($__time !== '12:00 AM') {
+            return $__time . ($session !== '' ? ' | ' . ucwords(str_replace('_', ' ', $session)) : '');
+        }
+    }
+
+    if ($session !== '') {
+        return ucwords(str_replace('_', ' ', $session));
+    }
+
+    return 'N/A';
+}
+
+/**
+ * getLatestDrawing: Given a game ID, load the latest COMPLETED draw record from that game's database table.
+ * Works for both regular and daily lotteries.
+ */
+function getLatestDrawing($gameId, $db)
+{
+    $spec = mylottoexpertLoadLotterySpec($gameId);
+    $tbl  = (string)($spec['dbCol'] ?? '');
+    $cfg  = (array)($spec['lotteryConfig'] ?? array());
+    if ($tbl === '') {
+        return null;
+    }
+
+    $realTable = $db->replacePrefix($tbl);
+    $q = $db->getQuery(true)
+        ->select('*')
+        ->from($db->quoteName($realTable))
+        ->where($db->quoteName('game_id') . ' = ' . $db->quote((string)$gameId))
+        ->where('DATE(' . $db->quoteName('draw_date') . ') <= ' . $db->quote(date('Y-m-d')))
+        ->order($db->quoteName('draw_date') . ' DESC');
+
+    $db->setQuery($q, 0, 25);
+    $rows = (array)$db->loadAssocList();
+    foreach ($rows as $__row) {
+        if (is_array($__row) && mylottoexpertHasCompletedDrawValues((string)$gameId, $__row, $cfg)) {
+            return $__row;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * getNextScheduledDrawing: Given a game ID, load the nearest upcoming/scheduled draw row.
+ * Works for both regular and daily lotteries.
+ */
+function getNextScheduledDrawing($gameId, $db)
+{
+    $spec = mylottoexpertLoadLotterySpec($gameId);
+    $tbl  = (string)($spec['dbCol'] ?? '');
+    if ($tbl === '') {
+        return null;
+    }
+
+    $today = date('Y-m-d');
+    $realTable = $db->replacePrefix($tbl);
+
+    $q = $db->getQuery(true)
+        ->select('*')
+        ->from($db->quoteName($realTable))
+        ->where($db->quoteName('game_id') . ' = ' . $db->quote((string)$gameId))
+        ->where('DATE(' . $db->quoteName('draw_date') . ') >= ' . $db->quote($today))
+        ->order($db->quoteName('draw_date') . ' ASC')
+        ->setLimit(1);
+
+    $db->setQuery($q);
+    $row = $db->loadAssoc();
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * getDrawByDate: Given a game ID and a specific draw date, retrieve that exact draw row.
+ */
+function getDrawByDate($gameId, $date, $db, $drawSession = null, $drawAt = null)
+{
+    $spec = mylottoexpertLoadLotterySpec($gameId);
+    $tbl  = (string)($spec['dbCol'] ?? '');
+    if ($tbl === '') {
+        return null;
+    }
+
+    $ts = strtotime((string)$date);
+    if ($ts === false) {
+        return null;
+    }
+    $dateOnly = date('Y-m-d', $ts);
+    $drawSession = mylottoexpertNormalizeTargetSession($drawSession);
+    $drawAtNorm  = '';
+    if ($drawAt !== null && $drawAt !== '') {
+        $drawAtTs = strtotime((string)$drawAt);
+        if ($drawAtTs !== false) {
+            $drawAtNorm = date('Y-m-d H:i:s', $drawAtTs);
+        }
+    }
+
+    $realTable = $db->replacePrefix($tbl);
+    static $__mleDrawColsCache = array();
+    if (!isset($__mleDrawColsCache[$realTable])) {
+        try {
+            $cols = $db->getTableColumns($realTable, false);
+        } catch (Exception $e) {
+            $cols = array();
+        }
+        $colNames = array();
+        if (is_array($cols)) {
+            foreach ($cols as $ck => $cv) {
+                if (is_string($ck) && $ck !== '') {
+                    $colNames[] = strtolower($ck);
+                } elseif (is_object($cv) && !empty($cv->Field)) {
+                    $colNames[] = strtolower((string)$cv->Field);
+                }
+            }
+        }
+        $__mleDrawColsCache[$realTable] = array_values(array_unique($colNames));
+    }
+    $__drawCols = $__mleDrawColsCache[$realTable];
+
+    $query = $db->getQuery(true)
+        ->select('*')
+        ->from($db->quoteName($realTable))
+        ->where($db->quoteName('game_id') . ' = ' . $db->quote((string)$gameId))
+        ->where('DATE(' . $db->quoteName('draw_date') . ') = ' . $db->quote($dateOnly));
+
+    if ($drawSession !== '' && in_array('draw_session', $__drawCols, true)) {
+        $query->where('LOWER(TRIM(' . $db->quoteName('draw_session') . ')) = ' . $db->quote($drawSession));
+    }
+    if ($drawAtNorm !== '' && in_array('draw_date', $__drawCols, true)) {
+        $query->order('ABS(TIMESTAMPDIFF(SECOND,' . $db->quote($drawAtNorm) . ',' . $db->quoteName('draw_date') . ')) ASC');
+    }
+    $query->order($db->quoteName('draw_date') . ' DESC')
+        ->setLimit(1);
+
+    $db->setQuery($query);
+    $__mleGdbResult = $db->loadAssoc();
+    // [FIX-SESSION-FALLBACK] If the session-filtered query returned no row, retry with a
+    // date-only filter. Session labels stored in the draw table (e.g. 'EVE', 'EV') may not
+    // match the normalized canonical session key saved by SKAI at prediction time (e.g.
+    // 'evening'). Retrying without the session WHERE clause ensures the draw is found as
+    // long as a row exists for that date, while still using draw_at proximity ordering for
+    // the closest match when multiple draws share the same date.
+    if (!is_array($__mleGdbResult) && $drawSession !== '' && in_array('draw_session', $__drawCols, true)) {
+        $__queryFb = $db->getQuery(true)
+            ->select('*')
+            ->from($db->quoteName($realTable))
+            ->where($db->quoteName('game_id') . ' = ' . $db->quote((string)$gameId))
+            ->where('DATE(' . $db->quoteName('draw_date') . ') = ' . $db->quote($dateOnly));
+        if ($drawAtNorm !== '' && in_array('draw_date', $__drawCols, true)) {
+            $__queryFb->order('ABS(TIMESTAMPDIFF(SECOND,' . $db->quote($drawAtNorm) . ',' . $db->quoteName('draw_date') . ')) ASC');
+        }
+        $__queryFb->order($db->quoteName('draw_date') . ' DESC')
+            ->setLimit(1);
+        $db->setQuery($__queryFb);
+        $__mleGdbResult = $db->loadAssoc();
+    }
+    return is_array($__mleGdbResult) ? $__mleGdbResult : null;
+}
+
+/**
+ * getDrawFields: For a given gameId, load draw-column metadata from either
+ * the master config or the daily catalog.
+ */
+function getDrawFields($gameId)
+{
+    $spec = mylottoexpertLoadLotterySpec($gameId);
+    $config = isset($spec['lotteryConfig']) && is_array($spec['lotteryConfig']) ? $spec['lotteryConfig'] : array();
+    if (empty($config)) {
+        return [];
+    }
+
+    $mainCols = $config['main_ball_columns'] ?? [];
+    $extrasArr = [];
+
+    if (!empty($config['extra_ball_columns']) && is_array($config['extra_ball_columns'])) {
+        foreach ($config['extra_ball_columns'] as $__ec) {
+            $__ec = trim((string)$__ec);
+            if ($__ec !== '' && !in_array($__ec, $extrasArr, true)) {
+                $extrasArr[] = $__ec;
+            }
+        }
+    }
+    foreach (['extra_ball_column', 'extra_ball_column_2'] as $__eck) {
+        if (!empty($config[$__eck])) {
+            $__ec = trim((string)$config[$__eck]);
+            if ($__ec !== '' && !in_array($__ec, $extrasArr, true)) {
+                $extrasArr[] = $__ec;
+            }
+        }
+    }
+
+    $isDailyGame = !empty($config['is_daily']);
+    $numExtraExpected = max(count($extrasArr), (int)($config['num_extra_balls_drawn'] ?? 0));
+
+    // [FIX-NO-EXTRA-REGULAR] For regular lotteries, do not trust a bare
+    // num_extra_balls_drawn value unless at least one concrete extra column is
+    // configured. Daily lotteries are allowed to declare extras without naming a
+    // raw column because some of them resolve their bonus digit via sibling-F
+    // rows or alias scans. This prevents no-extra regular games such as Texas
+    // Cash 5 from being treated as if they had an extra ball just because the
+    // config carries a stray num_extra_balls_drawn value.
+    if (!$isDailyGame && empty($extrasArr)) {
+        $numExtraExpected = 0;
+    }
+
+    return [
+        'main'               => $mainCols,
+        'extra'              => $extrasArr[0] ?? null,
+        'extra2'             => $extrasArr[1] ?? null,
+        'extras'             => $extrasArr,
+        'num_extra_expected' => $numExtraExpected,
+    ];
+}
+
+function mylottoexpertParseSimpleNumberCsv($value)
+{
+    $out = array();
+    foreach (explode(',', (string)$value) as $part) {
+        $part = trim((string)$part);
+        if ($part === '') { continue; }
+        $num = (int)$part;
+        $out[] = $num;
+    }
+    return $out;
+}
+
+function mylottoexpertNormalizeDigitString($value)
+{
+    return preg_replace('/[^0-9]/', '', (string)$value);
+}
+
+function mylottoexpertCanonicalizeResolvedDrawParts($gameId, $row, array $main, array $extra)
+{
+    $fields = getDrawFields($gameId);
+    $spec = mylottoexpertLoadLotterySpec($gameId);
+    $config = isset($spec['lotteryConfig']) && is_array($spec['lotteryConfig']) ? $spec['lotteryConfig'] : array();
+
+    $isDaily = !empty($config['is_daily']);
+    $pickSize = (int)($config['pick_size'] ?? $config['daily_pick_size'] ?? $config['num_main_balls_drawn'] ?? count($fields['main'] ?? array()));
+    $expectedExtra = (int)($fields['num_extra_expected'] ?? 0);
+
+    $mainOut = array();
+    foreach ((array)$main as $__v) {
+        if ($__v === '' || $__v === null) { continue; }
+        $__n = (int)$__v;
+        if ($isDaily || $__n > 0 || trim((string)$__v) === '0') {
+            $mainOut[] = $__n;
+        }
+    }
+
+    $extraOut = array();
+    foreach ((array)$extra as $__v) {
+        if ($__v === '' || $__v === null) { continue; }
+        $__n = (int)$__v;
+        if ($isDaily || $__n > 0 || trim((string)$__v) === '0') {
+            $extraOut[] = $__n;
+        }
+    }
+
+    // [FIX-CANONICAL-DRAW-RESULTS] For regular lotteries, the draw_results string is the
+    // authoritative representation of the official result. Use it to override any mistaken
+    // raw-column / alias extraction so no-extra games can never duplicate their last main ball
+    // into a fake extra slot and regular extra-ball games follow the exact published format.
+    if (!$isDaily && is_array($row) && array_key_exists('draw_results', $row) && $row['draw_results'] !== '' && $row['draw_results'] !== null) {
+        $__dr = trim((string)$row['draw_results']);
+        if (preg_match('/^\d+(?:-\d+){2,}(?:\+\d+(?:\+\d+)*)?$/', $__dr)) {
+            $__parts = explode('+', $__dr);
+            $__mainCsv = array_shift($__parts);
+            $mainOut = array();
+            foreach (explode('-', $__mainCsv) as $__piece) {
+                $__piece = trim((string)$__piece);
+                if ($__piece === '') { continue; }
+                $__num = (int)$__piece;
+                if ($__num > 0) { $mainOut[] = $__num; }
+            }
+            if ($expectedExtra > 0 && !empty($__parts)) {
+                $extraOut = array();
+                foreach ($__parts as $__piece) {
+                    $__piece = trim((string)$__piece);
+                    if ($__piece === '') { continue; }
+                    $__num = (int)$__piece;
+                    if ($__num > 0) { $extraOut[] = $__num; }
+                }
+            } else {
+                $extraOut = array();
+            }
+        }
+    }
+
+    if ($pickSize > 0) {
+        $mainOut = array_slice($mainOut, 0, $pickSize);
+    }
+
+    if ($expectedExtra <= 0) {
+        $extraOut = array();
+    } else {
+        $extraOut = array_slice($extraOut, 0, $expectedExtra);
+    }
+
+    return array('main' => array_values($mainOut), 'extra' => array_values($extraOut));
+}
+
+function mylottoexpertExtractDrawNumbersFromRow($gameId, $row)
+{
+    $result = array('main' => array(), 'extra' => array());
+
+    if (!is_array($row) || empty($row)) {
+        return $result;
+    }
+
+    $fields    = getDrawFields($gameId);
+    $mainCols  = isset($fields['main'])   && is_array($fields['main'])   ? $fields['main']   : array();
+    // Use the authoritative extras array (supports extra_ball_columns, extra_ball_column_2, etc.)
+    $extrasArr = isset($fields['extras']) && is_array($fields['extras']) ? $fields['extras'] : array_values(array_filter([
+        isset($fields['extra'])  ? $fields['extra']  : null,
+        isset($fields['extra2']) ? $fields['extra2'] : null,
+    ]));
+
+    // Preferred path: use configured raw columns from lottery_skip_config.json.
+    foreach ($mainCols as $col) {
+        $col = trim((string)$col);
+        if ($col === '' || !array_key_exists($col, $row)) {
+            continue;
+        }
+        $val = $row[$col];
+        if ($val === '' || $val === null) {
+            continue;
+        }
+        $num = (int)$val;
+        if ((string)$val !== '' && ($num !== 0 || trim((string)$val) === '0')) {
+            $result['main'][] = $num;
+        }
+    }
+
+    // Read configured extra ball columns only when the game truly expects extras.
+    if ((int)($fields['num_extra_expected'] ?? 0) > 0) {
+        foreach ($extrasArr as $__ec) {
+            if ($__ec === null || $__ec === '') { continue; }
+            $__ec = trim((string)$__ec);
+            if ($__ec !== '' && array_key_exists($__ec, $row)) {
+                $val = $row[$__ec];
+                if ($val !== '' && $val !== null) {
+                    $num = (int)$val;
+                    if ((string)$val !== '' && ($num !== 0 || trim((string)$val) === '0')) {
+                        $result['extra'][] = $num;
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback path for normalized draw-map rows: main_0..main_24 + extra_ball, extra_ball_2, ...
+    if (empty($result['main'])) {
+        for ($i = 0; $i < 25; $i++) {
+            $k = 'main_' . $i;
+            if (!array_key_exists($k, $row) || $row[$k] === '' || $row[$k] === null) {
+                continue;
+            }
+            $v = (int)$row[$k];
+            if ($v !== 0 || trim((string)$row[$k]) === '0') {
+                $result['main'][] = $v;
+            }
+        }
+    }
+
+    // Read normalized extra_ball aliases only for games that actually have extras.
+    // This prevents a no-extra regular game from treating a stray alias value as a real bonus.
+    if ((int)($fields['num_extra_expected'] ?? 0) > 0) {
+        for ($__ei = 0; $__ei < 10; $__ei++) {
+            $__ebk = $__ei === 0 ? 'extra_ball' : 'extra_ball_' . ($__ei + 1);
+            if (array_key_exists($__ebk, $row) && $row[$__ebk] !== '' && $row[$__ebk] !== null) {
+                $v = (int)$row[$__ebk];
+                if ($v !== 0 || trim((string)$row[$__ebk]) === '0') {
+                    $result['extra'][] = $v;
+                }
+            } else {
+                break; // no more extra_ball_N aliases present
+            }
+        }
+    }
+
+    // [FIX-DAILY-EXTRA-ALIASES] Many daily tables store the bonus digit under raw names that
+    // are not included in lottery_skip_config.json and are not part of the normalized
+    // extra_ball / extra_ball_2 aliases. If we still have no extracted extra value, scan the
+    // most common bonus column names directly so daily bonus results display and score.
+    // Guard: only run this scan for games that declare at least one extra ball. Without this
+    // guard, the alias scan can inject a false extra for no-extra games (e.g. Texas Cash 5)
+    // when their draw table happens to have a column whose name matches an alias.
+    if (empty($result['extra']) && (int)($fields['num_extra_expected'] ?? 0) > 0) {
+        $__commonExtraAliases = array(
+            'bonus_ball','bonus_ball_2','bonus','bonus2','bonus_number','bonus_num',
+            'fireball','fire_ball','wildball','wild_ball','wild','fb','wb',
+            'extra','extra1','extra_1','extra2','extra_2','ball_extra'
+        );
+        foreach ($__commonExtraAliases as $__alias) {
+            if (!array_key_exists($__alias, $row) || $row[$__alias] === '' || $row[$__alias] === null) {
+                continue;
+            }
+            $v = (int)$row[$__alias];
+            if ($v !== 0 || trim((string)$row[$__alias]) === '0') {
+                $result['extra'][] = $v;
+            }
+        }
+        if (!empty($result['extra'])) {
+            $result['extra'] = array_values(array_unique($result['extra']));
+        }
+    }
+
+    // Final defensive fallback: if this is a raw draw row with numeric fields but no config match,
+    // scan numeric fields while excluding common metadata and already-used extra fields.
+    if (empty($result['main'])) {
+        // [FIX-DRAW-RESULTS] draw_results is a composite representation string (e.g. '502' for
+        // Pick3, or '5-12-23-33-42' for regular lotteries). It must be excluded from the
+        // defensive scan so it is never mistaken for a single ball value. Without this exclusion,
+        // '502' would be read as intval 502 and inserted BEFORE the real ordinal columns
+        // (first, second, third...) which appear later in the row, causing positional misalignment
+        // in daily combo comparison and producing 0 hits for a correct Pick3 prediction.
+        $metaFields = array(
+            'id','asset_id','state','ordering','checked_out','checked_out_time',
+            'created_by','modified_by','country','stateprov_name','stateprov_id',
+            'game_id','game_name','draw_date','next_draw_date','next_jackpot',
+            'req_date','draw_results'
+        );
+        $__extraColSet = array_flip($extrasArr);
+        foreach ($row as $k => $v) {
+            if (in_array($k, $metaFields, true)) {
+                continue;
+            }
+            if (isset($__extraColSet[$k])) {
+                continue;
+            }
+            if (strpos((string)$k, 'main_') === 0 || strpos((string)$k, 'extra_ball') === 0) {
+                continue;
+            }
+            if ($v === '' || $v === null || !preg_match('/^\d+$/', (string)$v)) {
+                continue;
+            }
+            $result['main'][] = (int)$v;
+        }
+    }
+
+    // [FIX-LEGACY-DRAW-RESULTS] Backward-compatible fallback for regular lotteries whose
+    // lottery_skip_config.json entry is missing main_ball_columns. In that case every path
+    // above leaves result['main'] empty. Parse the draw_results column (format:
+    // 'N-N-N-N-N' or 'N-N-N-N-N+E') as a dash-separated ball list so that older saved
+    // predictions for such games still resolve to a real draw and score correctly.
+    // Daily games are protected: their draw_results is a plain digit string ('502', etc.)
+    // which does NOT match the /^\d+(?:-\d+){2,}$/ pattern and is therefore skipped.
+    if (empty($result['main']) && array_key_exists('draw_results', $row) && $row['draw_results'] !== '' && $row['draw_results'] !== null) {
+        // Strip optional '+E' extra-ball suffix (e.g. '7-14-21-33-48+3') before matching.
+        // Use /\+\d+$/ so only a numeric +Bonus tail is removed; other '+' characters are kept.
+        $__drStripped = preg_replace('/\+\d+$/', '', (string)$row['draw_results']);
+        // Require at least 3 dash-separated parts (e.g. 'N-N-N') to distinguish a regular
+        // lottery ball list from a plain digit string used by daily games ('502', '1234', etc.)
+        if (preg_match('/^\d+(?:-\d+){2,}$/', trim($__drStripped))) {
+            foreach (explode('-', trim($__drStripped)) as $__drPart) {
+                $__drNum = (int)$__drPart;
+                if ($__drNum > 0) {
+                    $result['main'][] = $__drNum;
+                }
+            }
+        }
+    }
+
+    // [FIX-DAILY-SIBLING-FB] Some daily lotteries store the real bonus / Fireball in a sibling
+    // game_id row for the same date (for example FLD -> FLDF). When the main-row extraction
+    // produced no extra, look up the sibling F-game row and treat its first resolved main digit
+    // as the actual extra. Only do this for the base game_id (not rows already ending in F).
+    if (empty($result['extra']) && is_array($spec = mylottoexpertLoadLotterySpec($gameId)) && !preg_match('/F$/i', (string)$gameId)) {
+        $__cfg = isset($spec['lotteryConfig']) && is_array($spec['lotteryConfig']) ? $spec['lotteryConfig'] : array();
+        $__expectedExtra = (int)($__cfg['num_extra_balls_drawn'] ?? 0);
+        $__table = (string)($spec['dbCol'] ?? '');
+        $__drawDate = isset($row['draw_date']) ? trim((string)$row['draw_date']) : '';
+        // Guard: only run the sibling-F lookup for daily lotteries. Regular lotteries
+        // (e.g. MegaMillions, Powerball) do not use sibling-F game rows, and running
+        // this lookup for them can inject the wrong value when the draw table happens
+        // to contain rows whose game_id ends in F.
+        if ($__expectedExtra >= 1 && $__table !== '' && $__drawDate !== '' && !empty($__cfg['is_daily'])) {
+            $__fbGameId = strtoupper(trim((string)$gameId)) . 'F';
+            $__db = JFactory::getDbo();
+            $__fbQ = $__db->getQuery(true)
+                ->select('*')
+                ->from($__db->quoteName($__db->replacePrefix($__table)))
+                ->where($__db->quoteName('game_id') . ' = ' . $__db->quote($__fbGameId))
+                ->where('DATE(' . $__db->quoteName('draw_date') . ') = ' . $__db->quote(date('Y-m-d', strtotime($__drawDate))))
+                ->order($__db->quoteName('draw_date') . ' DESC');
+            $__db->setQuery($__fbQ, 0, 1);
+            $__fbRow = $__db->loadAssoc();
+            if (is_array($__fbRow) && !empty($__fbRow)) {
+                $__fbMain = array();
+                $__fbSpec = mylottoexpertLoadLotterySpec($__fbGameId);
+                $__fbCfg  = isset($__fbSpec['lotteryConfig']) && is_array($__fbSpec['lotteryConfig']) ? $__fbSpec['lotteryConfig'] : array();
+                foreach ((array)($__fbCfg['main_ball_columns'] ?? array()) as $__fbCol) {
+                    $__fbCol = trim((string)$__fbCol);
+                    if ($__fbCol !== '' && array_key_exists($__fbCol, $__fbRow) && $__fbRow[$__fbCol] !== '' && $__fbRow[$__fbCol] !== null) {
+                        $__fbVal = (int)$__fbRow[$__fbCol];
+                        if ($__fbVal !== 0 || trim((string)$__fbRow[$__fbCol]) === '0') { $__fbMain[] = $__fbVal; }
+                    }
+                }
+                if (empty($__fbMain)) {
+                    foreach (array('first','second','third','fourth','fifth','sixth','seventh','eighth','nineth','tenth','eleventh','twelveth','thirtheenth','fourteenth','fifteenth','sixteenth','seventeenth','eighteenth','nineteenth','twentieth','twenty_first','twenty_second','twenty_third') as $__ordKey) {
+                        if (array_key_exists($__ordKey, $__fbRow) && $__fbRow[$__ordKey] !== '' && $__fbRow[$__ordKey] !== null) {
+                            $__fbVal = (int)$__fbRow[$__ordKey];
+                            if ($__fbVal !== 0 || trim((string)$__fbRow[$__ordKey]) === '0') { $__fbMain[] = $__fbVal; }
+                        }
+                    }
+                }
+                if (!empty($__fbMain)) {
+                    $result['extra'][] = (int)$__fbMain[0];
+                }
+            }
+        }
+    }
+
+    // Final canonical pass: enforce pick size / expected extra count, and for regular
+    // lotteries prefer the published draw_results representation over any ambiguous raw
+    // column mapping so a last main ball can never leak into the extra slot.
+    $result = mylottoexpertCanonicalizeResolvedDrawParts($gameId, $row, $result['main'], $result['extra']);
+
+    return $result;
+}
+
+function mylottoexpertDigitStringToArray($value)
+{
+    $digits = mylottoexpertNormalizeDigitString($value);
+    if ($digits === '') {
+        return array();
+    }
+    return array_map('intval', str_split($digits));
+}
+
+/**
+ * Format a single lottery digit (0-9) with a leading zero for display (e.g., 3 -> '03').
+ * Values >= 10 are returned as plain string. Non-digit values are cast to int first.
+ */
+function mylottoexpertFormatBonusDigit($n)
+{
+    $n = (int)$n;
+    return ($n >= 0 && $n <= 9) ? ('0' . $n) : (string)$n;
+}
+
+/**
+ * [[SKAI_DISPLAY_SYNC]] Extract regular-lottery display numbers from structured columns.
+ * Prefers new structured JSON fields; falls back to legacy CSV fields.
+ * Returns ['main' => int[], 'extra' => int[], 'main_count' => int, 'extra_count' => int]
+ */
+function mylottoexpertExtractRegularSavedView($row)
+{
+    $result = array(
+        'main'        => array(),
+        'extra'       => array(),
+        'main_count'  => 0,
+        'extra_count' => 0,
+        'used_structured' => false
+    );
+
+    // 1. Prefer regular_main_numbers_json (most explicit structured source)
+    if (is_object($row) && !empty($row->regular_main_numbers_json)) {
+        $__decoded = json_decode((string)$row->regular_main_numbers_json, true);
+        if (is_array($__decoded) && !empty($__decoded)) {
+            $result['main'] = array_values(array_map('intval', $__decoded));
+            $result['used_structured'] = true;
+        }
+    }
+
+    // 2. Prefer main_display_json as second choice
+    if (empty($result['main']) && is_object($row) && !empty($row->main_display_json)) {
+        $__decoded = json_decode((string)$row->main_display_json, true);
+        if (is_array($__decoded) && !empty($__decoded)) {
+            $result['main'] = array_values(array_map('intval', $__decoded));
+            $result['used_structured'] = true;
+        }
+    }
+
+    // 3. Fall back to legacy main_numbers CSV
+    if (empty($result['main'])) {
+        $__raw = is_object($row) ? (string)($row->main_numbers ?? '') : (string)($row['main_numbers'] ?? '');
+        if ($__raw !== '') {
+            $__raw = ltrim($__raw, '['); // strip JSON array chars if stored as JSON
+            $__raw = rtrim($__raw, ']');
+            $__arr = json_decode('[' . $__raw . ']', true);
+            if (is_array($__arr) && !empty($__arr)) {
+                $result['main'] = array_values(array_map('intval', $__arr));
+            } else {
+                $__parts = explode(',', $__raw);
+                foreach ($__parts as $__p) {
+                    $__p = trim((string)$__p, ' "\'');
+                    if ($__p !== '') { $result['main'][] = (int)$__p; }
+                }
+            }
+        }
+    }
+
+    // 4. Prefer regular_extra_numbers_json
+    if (is_object($row) && !empty($row->regular_extra_numbers_json)) {
+        $__decoded = json_decode((string)$row->regular_extra_numbers_json, true);
+        if (is_array($__decoded) && !empty($__decoded)) {
+            $result['extra'] = array_values(array_map('intval', $__decoded));
+        }
+    }
+
+    // 5. Prefer extra_display_json as second choice
+    if (empty($result['extra']) && is_object($row) && !empty($row->extra_display_json)) {
+        $__decoded = json_decode((string)$row->extra_display_json, true);
+        if (is_array($__decoded) && !empty($__decoded)) {
+            $result['extra'] = array_values(array_map('intval', $__decoded));
+        }
+    }
+
+    // 6. Fall back to legacy extra_ball_numbers CSV
+    if (empty($result['extra'])) {
+        $__raw = is_object($row) ? (string)($row->extra_ball_numbers ?? '') : (string)($row['extra_ball_numbers'] ?? '');
+        if ($__raw !== '') {
+            $__arr = json_decode($__raw, true);
+            if (is_array($__arr) && !empty($__arr)) {
+                $result['extra'] = array_values(array_map('intval', $__arr));
+            } else {
+                $__parts = explode(',', $__raw);
+                foreach ($__parts as $__p) {
+                    $__p = trim((string)$__p, ' "\'');
+                    if ($__p !== '') { $result['extra'][] = (int)$__p; }
+                }
+            }
+        }
+    }
+
+    $result['main_count']  = count($result['main']);
+    $result['extra_count'] = count($result['extra']);
+    return $result;
+}
+
+function mylottoexpertExtractDailySavedView($row)
+{
+    $result = array(
+        'is_daily'              => false,
+        'pick_size'             => 0,
+        'ranked_digits'         => array(),
+        'primary_combo_digits'  => array(),
+        'combo_strings'         => array(),
+        'combo_strings_with_bonus' => array(),
+        'extra_digits'          => array(),
+        'bonus_digits'          => array(),
+        'bonus_digits_display'  => array(),
+        'top_extras'            => array()
+    );
+
+    // [[SKAI_DISPLAY_SYNC]] Early detection: trust structured schema columns written by the
+    // primary save handler. prediction_family='daily' and renderer_hint='daily_combos' are
+    // set for every Pick3/4/5 row saved after the schema upgrade; detecting them here lets
+    // the extractor skip all the JSON-key hunting for those rows and return early once
+    // combo_strings is populated below.
+    if (is_object($row)) {
+        $__pf = isset($row->prediction_family) ? (string)$row->prediction_family : '';
+        $__rh = isset($row->renderer_hint)     ? (string)$row->renderer_hint     : '';
+        $__rm = isset($row->render_mode)       ? (string)$row->render_mode       : '';
+        if ($__pf === 'daily' || $__rh === 'daily_combos' || $__rm === 'daily_combos') {
+            $result['is_daily'] = true;
+        }
+    }
+
+    // --- Prefer new structured columns when available ---
+    $dailyPickSize = 0;
+    if (is_object($row) && isset($row->daily_pick_size) && (int)$row->daily_pick_size > 0) {
+        $dailyPickSize = (int)$row->daily_pick_size;
+    }
+    $result['pick_size'] = $dailyPickSize;
+
+    if (is_object($row) && isset($row->daily_influential_digits_json) && (string)$row->daily_influential_digits_json !== '') {
+        $__inf = json_decode((string)$row->daily_influential_digits_json, true);
+        if (is_array($__inf) && !empty($__inf)) {
+            $result['ranked_digits'] = array_values(array_map('intval', $__inf));
+            $result['is_daily'] = true;
+        }
+    }
+
+    if (is_object($row) && isset($row->daily_top_picks_json) && (string)$row->daily_top_picks_json !== '') {
+        $__tp = json_decode((string)$row->daily_top_picks_json, true);
+        if (is_array($__tp) && !empty($__tp)) {
+            foreach ($__tp as $__tpStr) {
+                $__tpStr = mylottoexpertNormalizeDigitString($__tpStr);
+                if ($__tpStr !== '') {
+                    $result['combo_strings'][] = $__tpStr;
+                }
+            }
+            if (!empty($result['combo_strings'])) { $result['is_daily'] = true; }
+        }
+    }
+
+    if (is_object($row) && isset($row->daily_bonus_digits_json) && (string)$row->daily_bonus_digits_json !== '') {
+        $__bd = json_decode((string)$row->daily_bonus_digits_json, true);
+        if (is_array($__bd) && !empty($__bd)) {
+            $result['bonus_digits'] = array_values(array_map('intval', $__bd));
+            $result['bonus_digits_display'] = array_map('mylottoexpertFormatBonusDigit', $result['bonus_digits']);
+            $result['extra_digits'] = $result['bonus_digits'];
+            $result['is_daily'] = true;
+        }
+    }
+
+    if (is_object($row) && isset($row->daily_primary_prediction) && (string)$row->daily_primary_prediction !== '') {
+        $__pp = mylottoexpertNormalizeDigitString((string)$row->daily_primary_prediction);
+        if ($__pp !== '' && empty($result['primary_combo_digits'])) {
+            $result['primary_combo_digits'] = mylottoexpertDigitStringToArray($__pp);
+            $result['is_daily'] = true;
+        }
+    }
+
+    // Build combo_strings_with_bonus from structured fields when bonus available
+    if (!empty($result['combo_strings']) && !empty($result['bonus_digits_display'])) {
+        $__bonusSuffix = ' + Bonus ' . implode(' ', $result['bonus_digits_display']);
+        foreach ($result['combo_strings'] as $__cs) {
+            $result['combo_strings_with_bonus'][] = $__cs . $__bonusSuffix;
+        }
+    } else {
+        $result['combo_strings_with_bonus'] = $result['combo_strings'];
+    }
+
+    // If structured columns provided complete data, return early
+    if ($result['is_daily'] && !empty($result['combo_strings'])) {
+        if (empty($result['primary_combo_digits']) && !empty($result['combo_strings'])) {
+            $result['primary_combo_digits'] = mylottoexpertDigitStringToArray($result['combo_strings'][0]);
+        }
+        return $result;
+    }
+
+    // --- Legacy: fall back to top_combos_json ---
+    $topCombRaw = '';
+    if (is_object($row) && isset($row->top_combos_json)) {
+        $topCombRaw = (string)$row->top_combos_json;
+    } elseif (is_array($row) && isset($row['top_combos_json'])) {
+        $topCombRaw = (string)$row['top_combos_json'];
+    }
+
+    $decoded = array();
+    if ($topCombRaw !== '') {
+        $decoded = json_decode($topCombRaw, true);
+        if (!is_array($decoded)) {
+            $decoded = array();
+        }
+    }
+
+    if (!empty($decoded['daily_ranked_digits']) && is_array($decoded['daily_ranked_digits']) && empty($result['ranked_digits'])) {
+        $result['ranked_digits'] = array_values(array_map('intval', $decoded['daily_ranked_digits']));
+        $result['is_daily'] = true;
+    }
+
+    if (!empty($decoded['daily_primary_combo_digits']) && is_array($decoded['daily_primary_combo_digits']) && empty($result['primary_combo_digits'])) {
+        $result['primary_combo_digits'] = array_values(array_map('intval', $decoded['daily_primary_combo_digits']));
+        $result['is_daily'] = true;
+    }
+
+    if (empty($result['combo_strings'])) {
+        if (!empty($decoded['daily_combo_strings']) && is_array($decoded['daily_combo_strings'])) {
+            foreach ($decoded['daily_combo_strings'] as $comboString) {
+                $comboString = mylottoexpertNormalizeDigitString($comboString);
+                if ($comboString !== '') {
+                    $result['combo_strings'][] = $comboString;
+                }
+            }
+            if (!empty($result['combo_strings'])) {
+                $result['is_daily'] = true;
+            }
+        }
+
+        if (empty($result['combo_strings']) && !empty($decoded['daily_top_combos']) && is_array($decoded['daily_top_combos'])) {
+            foreach ($decoded['daily_top_combos'] as $comboRow) {
+                if (!is_array($comboRow)) { continue; }
+                $comboString = '';
+                if (!empty($comboRow['display'])) {
+                    $comboString = mylottoexpertNormalizeDigitString($comboRow['display']);
+                } elseif (!empty($comboRow['values'])) {
+                    if (is_array($comboRow['values'])) {
+                        // FIX: Use strval() not intval() - strval preserves each digit as-is
+                        // (intval('06') -> 6, destroying leading zeros; strval('06') -> '06').
+                        $comboString = implode('', array_map('strval', $comboRow['values']));
+                    } else {
+                        $comboString = mylottoexpertNormalizeDigitString($comboRow['values']);
+                    }
+                }
+                if ($comboString !== '' && !in_array($comboString, $result['combo_strings'], true)) {
+                    $result['combo_strings'][] = $comboString;
+                }
+            }
+            if (!empty($result['combo_strings'])) {
+                $result['is_daily'] = true;
+            }
+        }
+
+        // [[SKAI_DISPLAY_SYNC]] Fallback: read daily_chosen_combos (SKAI primary save path)
+        if (empty($result['combo_strings']) && !empty($decoded['daily_chosen_combos']) && is_array($decoded['daily_chosen_combos'])) {
+            foreach ($decoded['daily_chosen_combos'] as $__dcc) {
+                if (!is_array($__dcc)) { continue; }
+                $__dccStr = '';
+                if (!empty($__dcc['display'])) {
+                    $__dccStr = mylottoexpertNormalizeDigitString($__dcc['display']);
+                } elseif (!empty($__dcc['combo']) && is_array($__dcc['combo'])) {
+                    // FIX: Use strval() not intval() - preserves digit '0' correctly.
+                    $__dccStr = implode('', array_map('strval', $__dcc['combo']));
+                } elseif (!empty($__dcc['values'])) {
+                    if (is_array($__dcc['values'])) {
+                        // FIX: Use strval() not intval() - preserves digit '0' correctly.
+                        $__dccStr = implode('', array_map('strval', $__dcc['values']));
+                    } else {
+                        $__dccStr = mylottoexpertNormalizeDigitString((string)$__dcc['values']);
+                    }
+                }
+                if ($__dccStr !== '' && !in_array($__dccStr, $result['combo_strings'], true)) {
+                    $result['combo_strings'][] = $__dccStr;
+                }
+            }
+            if (!empty($result['combo_strings'])) { $result['is_daily'] = true; }
+        }
+
+        // [[SKAI_DISPLAY_SYNC]] Fallback: read aiPredictedNumbers (display strings in FPS JSON)
+        // GUARD: Only treat aiPredictedNumbers as daily combo strings when the FPS JSON
+        // predictionMode is explicitly 'daily_digit' OR is absent (legacy pre-predictionMode
+        // rows saved before this field was added - those are assumed daily when aiPredictedNumbers
+        // is present, since regular-lottery FPS JSON did not contain aiPredictedNumbers then).
+        // Regular-lottery rows (EuroMillions, Powerball) with predictionMode='standard_lottery'
+        // MUST be skipped - their aiPredictedNumbers contain number display strings like "1,7,14"
+        // that would incorrectly trigger daily rendering.
+        // Extra guard: if prediction_family='regular' (structured column) always skip.
+        $__rowFamily   = (is_object($row) && isset($row->prediction_family)) ? (string)$row->prediction_family : '';
+        $__fpsPredMode = isset($decoded['predictionMode'])                   ? (string)$decoded['predictionMode'] : '';
+        $__fpsDailyMode = ($__rowFamily !== 'regular')
+            && ($__fpsPredMode === '' || $__fpsPredMode === 'daily_digit');
+        if ($__fpsDailyMode && empty($result['combo_strings']) && !empty($decoded['aiPredictedNumbers']) && is_array($decoded['aiPredictedNumbers'])) {
+            foreach ($decoded['aiPredictedNumbers'] as $__apn) {
+                if (!is_array($__apn)) { continue; }
+                $__apnStr = '';
+                if (!empty($__apn['display'])) {
+                    $__apnStr = mylottoexpertNormalizeDigitString((string)$__apn['display']);
+                } elseif (!empty($__apn['values'])) {
+                    $__apnStr = is_array($__apn['values'])
+                        // FIX: Use strval() not intval() - preserves digit '0' correctly.
+                        ? implode('', array_map('strval', $__apn['values']))
+                        : mylottoexpertNormalizeDigitString((string)$__apn['values']);
+                }
+                if ($__apnStr !== '' && !in_array($__apnStr, $result['combo_strings'], true)) {
+                    $result['combo_strings'][] = $__apnStr;
+                }
+            }
+            if (!empty($result['combo_strings'])) { $result['is_daily'] = true; }
+        }
+    }
+
+    // Fix daily_top_extras: handle both object format [{rank,num,display}] and simple int format
+    if (!empty($decoded['daily_top_extras']) && is_array($decoded['daily_top_extras']) && empty($result['top_extras'])) {
+        $__extractedExtras = array();
+        foreach ($decoded['daily_top_extras'] as $__dte) {
+            if (is_array($__dte)) {
+                if (isset($__dte['num'])) {
+                    $__extractedExtras[] = (int)$__dte['num'];
+                } elseif (isset($__dte['display'])) {
+                    preg_match_all('/\d+/', (string)$__dte['display'], $__m);
+                    if (!empty($__m[0])) { $__extractedExtras[] = (int)$__m[0][0]; }
+                }
+            } else {
+                $__n = (int)$__dte;
+                if ($__n >= 0) { $__extractedExtras[] = $__n; }
+            }
+        }
+        if (!empty($__extractedExtras)) {
+            $result['top_extras'] = array_values($__extractedExtras);
+            $result['is_daily'] = true;
+        }
+    }
+
+    // Read daily_bonus_digits from top_combos_json (simple int array) when not already set
+    if (empty($result['bonus_digits']) && !empty($decoded['daily_bonus_digits']) && is_array($decoded['daily_bonus_digits'])) {
+        $result['bonus_digits'] = array_values(array_map('intval', $decoded['daily_bonus_digits']));
+        $result['bonus_digits_display'] = array_map('mylottoexpertFormatBonusDigit', $result['bonus_digits']);
+        $result['extra_digits'] = $result['bonus_digits'];
+        $result['is_daily'] = true;
+    }
+
+    // Read extra_ball_numbers as fallback bonus digits if still empty
+    if (empty($result['extra_digits'])) {
+        $extraRaw = '';
+        if (is_object($row) && isset($row->extra_ball_numbers)) {
+            $extraRaw = (string)$row->extra_ball_numbers;
+        } elseif (is_array($row) && isset($row['extra_ball_numbers'])) {
+            $extraRaw = (string)$row['extra_ball_numbers'];
+        }
+        if ($extraRaw !== '') {
+            $result['extra_digits'] = mylottoexpertParseSimpleNumberCsv($extraRaw);
+        }
+    }
+
+    if (empty($result['ranked_digits'])) {
+        $mainRaw = '';
+        if (is_object($row) && isset($row->main_numbers)) {
+            $mainRaw = (string)$row->main_numbers;
+        } elseif (is_array($row) && isset($row['main_numbers'])) {
+            $mainRaw = (string)$row['main_numbers'];
+        }
+        $mainDigits = mylottoexpertParseSimpleNumberCsv($mainRaw);
+        if (!empty($mainDigits) && count($mainDigits) >= 2 && count($mainDigits) <= 5) {
+            $result['ranked_digits'] = $mainDigits;
+            if (!empty($result['combo_strings']) || !empty($result['primary_combo_digits']) || !empty($result['extra_digits'])) {
+                $result['is_daily'] = true;
+            }
+        }
+    }
+
+    if (empty($result['primary_combo_digits']) && !empty($result['combo_strings'])) {
+        $result['primary_combo_digits'] = mylottoexpertDigitStringToArray($result['combo_strings'][0]);
+    }
+
+    if (empty($result['combo_strings']) && !empty($result['primary_combo_digits'])) {
+        $result['combo_strings'][] = implode('', array_map('strval', $result['primary_combo_digits']));
+    }
+
+    // Build combo_strings_with_bonus from legacy data when bonus available
+    if (!empty($result['combo_strings']) && empty($result['combo_strings_with_bonus'])) {
+        $__bonusDisp = !empty($result['bonus_digits_display']) ? $result['bonus_digits_display'] : array();
+        if (empty($__bonusDisp) && !empty($result['top_extras'])) {
+            $__bonusDisp = array_map('mylottoexpertFormatBonusDigit', $result['top_extras']);
+        }
+        if (!empty($__bonusDisp)) {
+            $__bonusSuffix = ' + Bonus ' . implode(' ', $__bonusDisp);
+            foreach ($result['combo_strings'] as $__cs) {
+                $result['combo_strings_with_bonus'][] = $__cs . $__bonusSuffix;
+            }
+        } else {
+            $result['combo_strings_with_bonus'] = $result['combo_strings'];
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * Score a completed run for ranking in the Draw Results Comparison table.
+ *
+ * Returns an array of metrics used by mylottoexpertCompareCompletedRuns():
+ *   total_hits            - main_hits + extra_hits (primary sort key)
+ *   main_hits             - matched main numbers
+ *   extra_hits            - matched extra/bonus numbers
+ *   successful_combo_count - how many predicted combo lines produced >=1 hit
+ *                            (only meaningful when multiple combos are stored)
+ *   combo_quality_score   - aggregate strength across all combo lines
+ *                            (main hit x 100) + (extra hit x 25) per combo
+ *   pos_sum               - sum of 1-based pred_main positions that matched
+ *   run_id                - used as final fallback tiebreak (higher = newer)
+ *
+ * Daily lotteries: evaluates every entry in pred_combo_strings.
+ * Regular lotteries: uses pred_main / pred_extra_all (single effective line).
+ * Unscored runs (has_draw = false) receive all-zero metrics except run_id.
+ */
+function mylottoexpertScoreCompletedRun(array $run): array
+{
+    $metrics = array(
+        'total_hits'             => 0,
+        'main_hits'              => 0,
+        'extra_hits'             => 0,
+        'successful_combo_count' => 0,
+        'combo_quality_score'    => 0,
+        'pos_sum'                => (int)($run['pos_sum'] ?? 0),
+        'run_id'                 => (int)($run['run_id'] ?? 0),
+    );
+
+    if (empty($run['has_draw'])) {
+        return $metrics;
+    }
+
+    $actualMain  = array_map('intval', (array)($run['actual_main']  ?? array()));
+    $actualExtra = array_map('intval', (array)($run['actual_extra'] ?? array()));
+
+    $isDaily       = !empty($run['is_daily']);
+    $comboStrings  = (array)($run['pred_combo_strings'] ?? array());
+
+    if ($isDaily && !empty($comboStrings) && !empty($actualMain)) {
+        // -- Daily lottery: evaluate every predicted combo line --------------
+        $drawDigitsBase = array_values($actualMain); // digits, may include 0
+
+        $bestMainHits  = 0;
+        $bestExtraHits = 0;
+
+        foreach ($comboStrings as $cs) {
+            $cs = (string)$cs;
+            if ($cs === '') { continue; }
+
+            $comboDigits = mylottoexpertDigitStringToArray($cs);
+            if (empty($comboDigits)) { continue; }
+
+            // Count digit overlap (consume each draw digit once, order-independent)
+            $comboMainHits  = 0;
+            $remaining = $drawDigitsBase;
+            foreach ($comboDigits as $cd) {
+                $idx = array_search((int)$cd, $remaining, true);
+                if ($idx !== false) {
+                    $comboMainHits++;
+                    unset($remaining[$idx]);
+                    $remaining = array_values($remaining);
+                }
+            }
+
+            // Extra hits for this combo line (extra digits stored in pred_extra_all)
+            $comboExtraHits = 0;
+            $predExtraAll = array_map('intval', (array)($run['pred_extra_all'] ?? array()));
+            foreach ($predExtraAll as $pev) {
+                if ($pev > 0 && in_array($pev, $actualExtra, true)) {
+                    $comboExtraHits = 1;
+                    break;
+                }
+            }
+
+            $comboTotal = $comboMainHits + $comboExtraHits;
+
+            if ($comboMainHits > $bestMainHits
+                || ($comboMainHits === $bestMainHits && $comboExtraHits > $bestExtraHits)) {
+                $bestMainHits  = $comboMainHits;
+                $bestExtraHits = $comboExtraHits;
+            }
+
+            // A combo counts as "successful" if it has at least 1 hit
+            if ($comboTotal >= 1) {
+                $metrics['successful_combo_count']++;
+            }
+
+            // Aggregate quality: main hits weighted heavily, extra adds value
+            $metrics['combo_quality_score'] += ($comboMainHits * 100) + ($comboExtraHits * 25);
+        }
+
+        $metrics['main_hits']  = $bestMainHits;
+        $metrics['extra_hits'] = $bestExtraHits;
+        $metrics['total_hits'] = $bestMainHits + $bestExtraHits;
+
+    } else {
+        // -- Regular lottery or daily with no combo strings -----------------
+        $mainHits  = (int)($run['hits_main']  ?? 0);
+        $extraHits = (int)($run['hits_extra'] ?? 0);
+
+        $metrics['main_hits']  = $mainHits;
+        $metrics['extra_hits'] = $extraHits;
+        $metrics['total_hits'] = $mainHits + $extraHits;
+
+        // Single-line "combo coverage": if there is at least one hit, count it
+        if (($mainHits + $extraHits) >= 1) {
+            $metrics['successful_combo_count'] = 1;
+        }
+        $metrics['combo_quality_score'] = ($mainHits * 100) + ($extraHits * 25);
+    }
+
+    return $metrics;
+}
+
+/**
+ * Shared comparator for completed scored runs (usort / best-run selection).
+ *
+ * Ranking model (highest priority first):
+ *   1. Higher TOTAL HITS wins
+ *   2. Higher MAIN HITS wins
+ *   3. Higher EXTRA HITS wins
+ *   4. Higher SUCCESSFUL COMBO COUNT wins (more tickets contributed)
+ *   5. Higher COMBO QUALITY SCORE wins (aggregate hit strength)
+ *   6. Lower POS_SUM wins (matched numbers appeared higher in ranked prediction)
+ *   7. Higher RUN_ID wins (newer run as final fallback)
+ *
+ * Returns negative if $a ranks above $b, positive if $b ranks above $a.
+ * Unscored runs (has_draw false) always sort below scored ones.
+ */
+function mylottoexpertCompareCompletedRuns(array $a, array $b): int
+{
+    // Scored before unscored
+    $aScored = !empty($a['has_draw']) ? 1 : 0;
+    $bScored = !empty($b['has_draw']) ? 1 : 0;
+    if ($aScored !== $bScored) { return $bScored - $aScored; }
+
+    if (!$aScored) {
+        // Both unscored: sort by draw_date desc, then run_id desc
+        $dateCmp = strcmp((string)$b['draw_date'], (string)$a['draw_date']);
+        if ($dateCmp !== 0) { return $dateCmp; }
+        return (int)$b['run_id'] - (int)$a['run_id'];
+    }
+
+    // Both scored: apply full 7-tier model
+    $mA = mylottoexpertScoreCompletedRun($a);
+    $mB = mylottoexpertScoreCompletedRun($b);
+
+    // 1. Total hits
+    if ($mA['total_hits'] !== $mB['total_hits']) { return $mB['total_hits'] - $mA['total_hits']; }
+    // 2. Main hits
+    if ($mA['main_hits'] !== $mB['main_hits']) { return $mB['main_hits'] - $mA['main_hits']; }
+    // 3. Extra hits
+    if ($mA['extra_hits'] !== $mB['extra_hits']) { return $mB['extra_hits'] - $mA['extra_hits']; }
+    // 4. Successful combo count (more tickets contributed to the win)
+    if ($mA['successful_combo_count'] !== $mB['successful_combo_count']) {
+        return $mB['successful_combo_count'] - $mA['successful_combo_count'];
+    }
+    // 5. Combo quality score (aggregate strength)
+    if ($mA['combo_quality_score'] !== $mB['combo_quality_score']) {
+        return $mB['combo_quality_score'] - $mA['combo_quality_score'];
+    }
+    // 6. Lower pos_sum = matched numbers were predicted as more likely
+    if ($mA['pos_sum'] !== $mB['pos_sum']) { return $mA['pos_sum'] - $mB['pos_sum']; }
+    // 7. Higher run_id (newer) wins
+    return $mB['run_id'] - $mA['run_id'];
+}
+
+/**
+ * Map a US state/territory name -> USPS abbreviation (uppercase).
+ * Falls back to first two letters if unknown. Input may be mixed case.
+ */
+function stateToAbbrev(string $stateName): string
+{
+    if (mylottoexpertIsEuroMillionsLottery($stateName, '')) {
+        return '';
+    }
+
+    static $map = [
+        'alabama'=>'AL','alaska'=>'AK','arizona'=>'AZ','arkansas'=>'AR','california'=>'CA','colorado'=>'CO','connecticut'=>'CT','delaware'=>'DE',
+        'district of columbia'=>'DC','washington dc'=>'DC','dc'=>'DC',
+        'florida'=>'FL','georgia'=>'GA','hawaii'=>'HI','idaho'=>'ID','illinois'=>'IL','indiana'=>'IN','iowa'=>'IA','kansas'=>'KS','kentucky'=>'KY','louisiana'=>'LA',
+        'maine'=>'ME','maryland'=>'MD','massachusetts'=>'MA','michigan'=>'MI','minnesota'=>'MN','mississippi'=>'MS','missouri'=>'MO','montana'=>'MT',
+        'nebraska'=>'NE','nevada'=>'NV','new hampshire'=>'NH','new jersey'=>'NJ','new mexico'=>'NM','new york'=>'NY','north carolina'=>'NC','north dakota'=>'ND',
+        'ohio'=>'OH','oklahoma'=>'OK','oregon'=>'OR','pennsylvania'=>'PA','rhode island'=>'RI','south carolina'=>'SC','south dakota'=>'SD',
+        'tennessee'=>'TN','texas'=>'TX','utah'=>'UT','vermont'=>'VT','virginia'=>'VA','washington'=>'WA','west virginia'=>'WV','wisconsin'=>'WI','wyoming'=>'WY',
+        // common territories some datasets include
+        'puerto rico'=>'PR','guam'=>'GU','american samoa'=>'AS','northern mariana islands'=>'MP','us virgin islands'=>'VI'
+    ];
+    $k = strtolower(trim($stateName));
+    if (isset($map[$k])) return $map[$k];
+    // If input is already an abbreviation like "NY"
+    if (strlen($stateName) === 2 && ctype_alpha($stateName)) return strtoupper($stateName);
+    $two = strtoupper(preg_replace('/[^A-Za-z]/','', $stateName));
+    return substr($two, 0, 2) ?: 'US';
+}
+
+/**
+ * Build a safe logo path using your format:
+ * /images/lottodb/us/{ST}/{game-name-slug}.png
+ * Returns ['path' => string, 'exists' => bool, 'alt' => string]
+ */
+function buildLotteryLogoPath(string $stateName, string $gameName): array
+{
+    if (mylottoexpertIsEuroMillionsLottery($stateName, $gameName)) {
+        return mylottoexpertBuildEuroMillionsLogoPath($gameName);
+    }
+
+    $abbrUpper = stateToAbbrev($stateName);       // e.g., AZ
+    $abbrLower = strtolower($abbrUpper);          // e.g., az
+
+    // Your exact spec: str_replace(' ','-', strtolower($gName))
+    // Sanitize $gameName before slug building using an allowlist approach to prevent path traversal.
+    // URL-decode first to catch encoded traversal sequences (%2e%2e, %2f, etc.), then strip to
+    // safe characters only. This preserves all valid lottery name characters for slug generation.
+    $gameName  = urldecode((string)$gameName);
+    $gameName  = preg_replace('/[^A-Za-z0-9 \'\-\&\(\)\.]/', '', $gameName);
+
+    // Strip trailing parenthetical qualifiers like "(Multi-State)", "(Multistate)", etc.
+    // These appear in DB lottery names but are never part of the image filename.
+    $gameNameBase = trim(preg_replace('/\s*\(.*\)\s*$/', '', $gameName));
+    if ($gameNameBase === '') {
+        $gameNameBase = $gameName;
+    }
+
+    $slugExact = str_replace(' ', '-', strtolower($gameNameBase));
+
+    // A safer fallback slug (strip punctuation, compress dashes)
+    $slugSafe  = strtolower(trim(preg_replace('/\s+/', '-', preg_replace('/[^A-Za-z0-9 ]/', '', $gameNameBase))));
+    $slugSafe  = preg_replace('/-+/', '-', $slugSafe);
+
+    // A digit-to-word variant: some files use the spelled-out number (e.g. "cash-five" not "cash-5")
+    static $digitWordMap = ['0'=>'zero','1'=>'one','2'=>'two','3'=>'three','4'=>'four',
+                             '5'=>'five','6'=>'six','7'=>'seven','8'=>'eight','9'=>'nine'];
+    $slugWords = preg_replace_callback('/(?<![a-z0-9])(\d)(?![0-9])/i',
+        static function ($m) use ($digitWordMap) { return $digitWordMap[$m[1]] ?? $m[1]; },
+        $slugExact
+    );
+    $slugWords = preg_replace('/-+/', '-', $slugWords);
+
+    // Try candidates in this order (fast-fail):
+    $candidates = [
+        '/images/lottodb/us/' . $abbrLower . '/' . $slugExact . '.png',
+        '/images/lottodb/us/' . $abbrUpper . '/' . $slugExact . '.png',
+        '/images/lottodb/us/' . $abbrLower . '/' . $slugSafe  . '.png',
+        '/images/lottodb/us/' . $abbrUpper . '/' . $slugSafe  . '.png',
+        '/images/lottodb/us/' . $abbrLower . '/' . $slugWords . '.png',
+        '/images/lottodb/us/' . $abbrUpper . '/' . $slugWords . '.png',
+    ];
+
+    foreach ($candidates as $rel) {
+        if (is_file(JPATH_ROOT . $rel)) {
+            return ['path' => $rel, 'exists' => true, 'alt' => $gameName . ' logo'];
+        }
+    }
+
+    // None found -> return the first (your canonical) for <img src> if you prefer,
+    // but we'll mark exists=false so the badge shows instead.
+    return ['path' => $candidates[0], 'exists' => false, 'alt' => $gameName . ' logo'];
+}
+
+/**
+ * scoreRunFromDrawMap: Score a prediction run against a preloaded draw map entry.
+ * Uses $drawMap (built via UNION ALL query) as the single data source -- no extra DB queries.
+ *
+ * @param array  $drawMap    Preloaded draw map keyed by "game_id|Y-m-d"
+ * @param string $gameId     Lottery game ID
+ * @param string $drawDate   Draw date (any strtotime-parsable string)
+ * @param array  $predMain   Predicted main numbers (ints; zeros are valid for daily games)
+ * @param int|null $predExtra  Predicted extra ball (null = not predicted; 0 = digit 0 predicted)
+ * @return array { has_draw, drawMain, drawExtra, hits_main, hits_extra }
+ */
+function scoreRunFromDrawMap($drawMap, $gameId, $drawDate, array $predMain, $predExtra = null)
+{
+    $empty = array('has_draw' => false, 'drawMain' => array(), 'drawExtra' => array(), 'hits_main' => 0, 'hits_extra' => 0);
+    $ts = strtotime((string)$drawDate);
+    if ($ts === false) {
+        return $empty;
+    }
+    $normDate = date('Y-m-d', $ts);
+    $mapKey   = strtolower(trim((string)$gameId)) . '|' . $normDate;
+    if (!isset($drawMap[$mapKey])) {
+        return $empty;
+    }
+    $row = $drawMap[$mapKey];
+
+    // Defensive extraction:
+    // 1) configured raw columns from lottery_skip_config.json
+    // 2) normalized main_0..main_n / extra_ball aliases
+    // 3) numeric-field fallback for raw daily rows
+    $drawParts = mylottoexpertExtractDrawNumbersFromRow($gameId, $row);
+    $drawMain  = isset($drawParts['main'])  && is_array($drawParts['main'])  ? array_values($drawParts['main'])  : array();
+    $drawExtra = isset($drawParts['extra']) && is_array($drawParts['extra']) ? array_values($drawParts['extra']) : array();
+
+    // If the game spec declares no extra balls, discard any extras the extractor may
+    // have inferred via fallback paths. This prevents false extras in scoring results.
+    $__srfFields = getDrawFields($gameId);
+    if ((int)($__srfFields['num_extra_expected'] ?? 0) === 0) {
+        $drawExtra = array();
+    }
+
+    if (empty($drawMain)) {
+        return $empty;
+    }
+
+    // Count main-ball hits
+    // [FIX-DAILY-ZERO] Do not skip digit 0: for daily lotteries (Pick3/4/5), 0 is a valid
+    // ball digit and must be counted as a hit when it appears in both prediction and draw.
+    // For regular lotteries, drawMain never contains 0 (balls are 1-based, e.g. 1-49), so
+    // removing the $n !== 0 guard does not affect regular lottery hit counting.
+    $hitsMain = 0;
+    foreach ($predMain as $n) {
+        if (in_array((int)$n, $drawMain, true)) {
+            $hitsMain++;
+        }
+    }
+
+    // Count extra-ball hit
+    $hitsExtra = 0;
+    // [FIX-EXTRA-ZERO-SENTINEL] $predExtra = null means no extra ball was predicted.
+    // $predExtra = 0 means digit 0 was explicitly predicted (valid for daily games).
+    // The previous code cast $predExtra to (int) here, converting null to 0, which made
+    // the subsequent null-guard always pass and caused false extra-hit matches on draws
+    // where the bonus digit happened to be 0.
+    if ($predExtra !== null && !empty($drawExtra) && in_array((int)$predExtra, $drawExtra, true)) {
+        $hitsExtra = 1;
+    }
+
+    return array(
+        'has_draw'   => true,
+        'drawMain'   => $drawMain,
+        'drawExtra'  => $drawExtra,
+        'hits_main'  => $hitsMain,
+        'hits_extra' => $hitsExtra,
+    );
+}
+?>
+
 <?php
 // Unified lottery-card cockpit: legacy standalone page sections are disabled.
 // All lottery-specific decision, saved-run, visual-comparison, run-selection, and next-settings-run work now lives inside each lottery card above.
