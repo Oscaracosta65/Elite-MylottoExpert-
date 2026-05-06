@@ -4007,17 +4007,20 @@ function mleAdvisoryResolveActualDrawPartsForVisual(array $perfRow, array $saved
     $drawSession = trim((string)($perfRow['target_draw_session'] ?? $savedRow['target_draw_session'] ?? $savedRow['draw_session'] ?? ''));
     $drawAt = trim((string)($perfRow['target_draw_at'] ?? $savedRow['target_draw_at'] ?? $savedRow['next_draw_at'] ?? ''));
 
-    // The performance table often stores only main actual numbers. For games such as
-    // EuroMillions, Powerball, and Mega Millions, resolve the official draw row and
-    // extract the true extra balls from the site's ordinal result columns.
-    if ($drawDate !== '' && (empty($extra) || empty($main))) {
+    // Always prefer the official draw row from the database as the source of truth for
+    // actual draw numbers. This ensures EuroMillions always shows the 2 Lucky Stars,
+    // Powerball always shows the correct Powerball, and Mega Millions the Mega Ball.
+    // The performance table often stores only main numbers or incorrectly splits extra balls.
+    if ($drawDate !== '') {
         try {
             $db = $dbForVisual;
             $drawRow = mleAdvisoryLoadOfficialDrawRowForVisual($db, $gameId, $drawDate, $perfRow, $savedRow);
             if (is_array($drawRow) && !empty($drawRow)) {
                 $officialParts = mleAdvisoryExtractActualPartsFromOfficialRow($db, $gameId, $perfRow, $savedRow, $predMain, $predExtra, $drawRow);
                 if (!empty($officialParts['main'])) { $main = array_values(array_map('intval', (array)$officialParts['main'])); }
-                if (!empty($officialParts['extra'])) { $extra = array_values(array_map('intval', (array)$officialParts['extra'])); }
+                // Always overwrite extra with official draw result. Never use JSON-stored extras
+                // as they may be wrong candidates rather than the true drawn bonus balls.
+                if (isset($officialParts['extra'])) { $extra = array_values(array_map('intval', (array)$officialParts['extra'])); }
             }
         } catch (\Throwable $e) { }
     }
@@ -4397,7 +4400,7 @@ function mleAdvisoryBuildVisualRunRows(array $activeRows, array $perfRows) {
         $method = (string)($row['method'] ?? '');
         $savedId = (int)($row['saved_id'] ?? 0);
         if (!empty($row['completed'])) {
-            $key = 'c|' . $savedId . '|' . $drawDate . '|' . $method . '|' . md5($predKey . '|' . $actualKey);
+            $key = 'c|' . $savedId . '|' . $drawDate . '|' . $method . '|' . md5($predKey);
         } else {
             $key = 'u|' . $savedId . '|' . $drawDate . '|' . $method . '|' . md5($predKey);
         }
@@ -4513,10 +4516,13 @@ function mleAdvisoryBuildVisualRunRows(array $activeRows, array $perfRows) {
     foreach ($rows as $__i => $__r) {
         $dd = trim((string)($__r['draw_date'] ?? ''));
         if ($dd === '' || empty($__r['completed']) || empty($officialByDrawDate[$dd])) { continue; }
-        if (!empty($officialByDrawDate[$dd]['actual']) && empty($__r['actual'])) {
+        // Always apply the best-known official actual draw to every row for this draw date.
+        // This ensures EuroMillions Lucky Stars and Powerball/Mega Ball are consistent
+        // across all prediction rows regardless of what was stored in individual perf rows.
+        if (!empty($officialByDrawDate[$dd]['actual'])) {
             $rows[$__i]['actual'] = $officialByDrawDate[$dd]['actual'];
         }
-        if (!empty($officialByDrawDate[$dd]['actual_extra']) && empty($__r['actual_extra'])) {
+        if (!empty($officialByDrawDate[$dd]['actual_extra'])) {
             $rows[$__i]['actual_extra'] = $officialByDrawDate[$dd]['actual_extra'];
         }
         $rows[$__i]['matches'] = array_values(array_intersect((array)($rows[$__i]['predicted'] ?? array()), (array)($rows[$__i]['actual'] ?? array())));
