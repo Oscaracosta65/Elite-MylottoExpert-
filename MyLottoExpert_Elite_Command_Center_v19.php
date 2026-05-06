@@ -12232,7 +12232,7 @@ if (!empty($__mleMessages)): ?>
     </div>
 
     <div class="mle-start-here__advanced">
-      <strong>For power users:</strong> open a lottery card and use its Visual Run Comparison, Run Selection, Saved Settings, and Advanced Details to narrow toward the best setup for that one lottery.
+      <strong>Want more detail?</strong> Open a lottery card to compare runs, review saved settings, and see extra details for that lottery.
     </div>
 
   </div>
@@ -12248,7 +12248,7 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   <div class="mle-advisory-board__header">
     <div class="mle-advisory-board__eyebrow">SKAI Decision Center</div>
     <h2 class="mle-advisory-board__title">MyLottoExpert Lottery Command Center</h2>
-    <p class="mle-advisory-board__subtitle">Open one lottery at a time. Each card is a complete narrowing workspace for that lottery: decision, recommended next settings run, visual proof, saved runs, saved numbers, saved settings, and compatible wheels.</p>
+    <p class="mle-advisory-board__subtitle">Open one lottery at a time. Each card shows your next step, best runs, saved numbers, saved settings, and matching wheels for that lottery.</p>
   </div>
 <?php if (!$__mleAdvHas): ?>
   <div class="mle-advisory-empty">
@@ -12558,7 +12558,7 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 
     <section class="mle-visual-comparison" id="<?php echo $__advVisualSectionId; ?>">
       <div class="mle-section-headline">
-        <div><h4>Visual Run Comparison</h4><p>Best runs are shown first. Duplicate records are merged so each saved run and draw appears once.</p></div>
+        <div><h4>Visual Run Comparison</h4><p>Best runs are shown first.</p></div>
         <button type="button" class="mle-section-toggle" data-mle-primary-section-toggle="1" aria-expanded="true" aria-controls="<?php echo $__advVisualBodyId; ?>"><span>Hide Visual Run Comparison</span></button>
       </div>
       <div id="<?php echo $__advVisualBodyId; ?>" class="mle-section-body" data-mle-primary-section-body="1" style="display:block" aria-hidden="false">
