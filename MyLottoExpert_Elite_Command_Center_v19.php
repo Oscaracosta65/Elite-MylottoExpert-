@@ -4507,6 +4507,165 @@ function mleAdvisoryComputePrecisionLockData(array $perfRows, array $savedById, 
     );
 }
 
+function mleAdvisoryBuildRecommendedSkaiBatchTest(array $precisionLock, array $settingsAdv, array $summary) {
+    $runCount = (int)($precisionLock['run_count'] ?? 0);
+    $drawCount = (int)($summary['scored_draws'] ?? 0);
+    $hasRange = !empty($precisionLock['has_range']);
+    $stage = (string)($precisionLock['stage'] ?? 'broad_testing');
+    $rangeMin = (int)round((float)($precisionLock['range_min'] ?? 0));
+    $rangeMax = (int)round((float)($precisionLock['range_max'] ?? 100));
+    $controlLabel = trim((string)($precisionLock['control_label'] ?? 'primary setting'));
+    if ($controlLabel === '') { $controlLabel = 'primary setting'; }
+    $hasAdvice = !empty($settingsAdv['has_advice']);
+    $settingLabel = trim((string)($settingsAdv['setting_label'] ?? ''));
+    $currentValue = trim((string)($settingsAdv['current_value'] ?? ''));
+    $suggestedValue = trim((string)($settingsAdv['suggested_value'] ?? ''));
+
+    $empty = array(
+        'has_recommendation' => false,
+        'title' => 'Recommended SKAI Batch Test',
+        'summary' => 'Not enough saved scored runs yet for a controlled SKAI batch test in this lottery.',
+        'test_plan' => '',
+        'guardrail' => 'Keep saving and scoring runs for this lottery first.',
+        'evidence_line' => $runCount . ' saved scored runs and ' . $drawCount . ' completed draw date' . ($drawCount === 1 ? '' : 's') . '.'
+    );
+
+    if ($runCount < 12 || $drawCount < 2 || !$hasRange) { return $empty; }
+    if (!in_array($stage, array('better_range', 'narrowing', 'precision_lock'), true)) { return $empty; }
+
+    $plan = 'Create 3 saved runs for this lottery inside the current ' . $controlLabel . ' range ' . $rangeMin . ' to ' . $rangeMax . '.';
+    if ($hasAdvice && $settingLabel !== '') {
+        $plan = 'Create 3 saved runs for this lottery while keeping the strongest settings locked. Test only ' . $settingLabel . ' using current value ' . ($currentValue !== '' ? $currentValue : 'current') . ' and recommended value ' . ($suggestedValue !== '' ? $suggestedValue : 'recommended') . ', then compare the next completed draw results.';
+    }
+
+    return array(
+        'has_recommendation' => true,
+        'title' => 'Recommended SKAI Batch Test',
+        'summary' => 'Evidence is now strong enough to run a controlled SKAI batch test for this lottery only.',
+        'test_plan' => $plan,
+        'guardrail' => 'Do not change multiple unrelated settings. Keep the current strongest setup stable and test one focused range question.',
+        'evidence_line' => $runCount . ' saved scored runs, ' . $drawCount . ' completed draw dates, and a narrowing range between ' . $rangeMin . ' and ' . $rangeMax . '.'
+    );
+}
+
+function mleAdvisoryComputeRecommendationLevel(array $precisionLock, array $summary, array $topMethod, array $settingsAdv, array $batchTest) {
+    $runCount = (int)($precisionLock['run_count'] ?? 0);
+    $drawCount = (int)($summary['scored_draws'] ?? 0);
+    $hasRange = !empty($precisionLock['has_range']);
+    $stage = (string)($precisionLock['stage'] ?? 'broad_testing');
+    $methodRepeat = (int)($topMethod['run_count'] ?? 0);
+    $hasAdvice = !empty($settingsAdv['has_advice']);
+    $hasBatch = !empty($batchTest['has_recommendation']);
+    $isNarrow = in_array($stage, array('narrowing', 'precision_lock'), true);
+
+    $levelKey = 'learning_stage';
+    $label = 'Learning Stage';
+    $why = 'This lottery still needs more saved scored runs before a confident recommendation can be made.';
+    $next = 'Save and score more runs for this lottery.';
+
+    if ($runCount >= 20 && $drawCount >= 3 && $methodRepeat >= 6 && $isNarrow && ($hasAdvice || $hasBatch)) {
+        $levelKey = 'elite_recommendation_level';
+        $label = 'Elite Recommendation Level';
+        $why = 'This lottery now has repeated saved scored evidence, a clearer narrowing range, and a reliable next action.';
+        $next = 'Keep validating this range after each completed draw.';
+    } elseif ($runCount >= 14 && $drawCount >= 2 && $methodRepeat >= 4 && $hasRange && ($hasAdvice || $hasBatch)) {
+        $levelKey = 'precision_lock_candidate';
+        $label = 'Precision Lock Candidate';
+        $why = 'Settings are clustering for this lottery and the next controlled test can now be defined clearly.';
+        $next = 'Run focused one-setting tests or a controlled SKAI batch inside the current range.';
+    } elseif ($runCount >= 10 && $drawCount >= 2 && $methodRepeat >= 3 && $hasRange) {
+        $levelKey = 'stronger_range_forming';
+        $label = 'Stronger Range Forming';
+        $why = 'A repeated range signal is now visible for this lottery, but more confirmation is still needed.';
+        $next = 'Keep the strongest settings stable and run one controlled next test.';
+    } elseif ($runCount >= 5 && $drawCount >= 1) {
+        $levelKey = 'early_pattern';
+        $label = 'Early Pattern';
+        $why = 'Early method and range signals are starting to appear, but evidence is still limited.';
+        $next = 'Keep scoring saved runs until the same range repeats more often.';
+    }
+
+    return array(
+        'level_key' => $levelKey,
+        'label' => $label,
+        'why' => $why,
+        'next_milestone' => $next,
+        'evidence_line' => $runCount . ' saved scored runs, ' . $drawCount . ' completed draw dates, top method repeated in ' . $methodRepeat . ' active run' . ($methodRepeat === 1 ? '' : 's') . '.'
+    );
+}
+
+function mleAdvisoryComputePrecisionProgress(array $precisionLock, array $summary, array $recommendationLevel, array $settingsAdv, array $batchTest) {
+    $runCount = (int)($precisionLock['run_count'] ?? 0);
+    $drawCount = (int)($summary['scored_draws'] ?? 0);
+    $stage = (string)($precisionLock['stage'] ?? 'broad_testing');
+    $hasRange = !empty($precisionLock['has_range']);
+    $hasAdvice = !empty($settingsAdv['has_advice']);
+    $hasBatch = !empty($batchTest['has_recommendation']);
+    $recLabel = (string)($recommendationLevel['label'] ?? '');
+
+    $level = 1;
+    $levelName = 'Getting Started';
+    $why = 'You are building the first evidence set for this lottery.';
+    $nextMilestone = 'Save and score more runs for this lottery.';
+    $achieved = 'Early runs have been saved for this lottery.';
+
+    if ($recLabel === 'Elite Recommendation Level' || ($runCount >= 20 && $drawCount >= 3 && $stage === 'precision_lock' && $hasAdvice)) {
+        $level = 6;
+        $levelName = 'Elite Recommendation Level';
+        $why = 'This lottery has repeated saved scored evidence with a clear range and a reliable next action.';
+        $nextMilestone = 'Keep validating the range after each completed draw.';
+        $achieved = 'A stable recommendation can now be explained with evidence.';
+    } elseif ($runCount >= 16 && $drawCount >= 2 && $hasRange && ($hasAdvice || $hasBatch)) {
+        $level = 5;
+        $levelName = 'Precision Lock Candidate';
+        $why = 'This lottery is close to a Precision Lock range, so tests should stay focused and controlled.';
+        $nextMilestone = 'Run a controlled SKAI batch inside the current range.';
+        $achieved = 'The strongest settings are now clustering more clearly.';
+    } elseif ($runCount >= 12 && $drawCount >= 2 && $hasRange && in_array($stage, array('better_range', 'narrowing', 'precision_lock'), true)) {
+        $level = 4;
+        $levelName = 'Range Narrower';
+        $why = 'A stronger range is forming for this lottery, so keep strong settings stable and test one change at a time.';
+        $nextMilestone = 'Confirm the range across more completed draws.';
+        $achieved = 'A meaningful range signal is now visible.';
+    } elseif ($runCount >= 8 && $drawCount >= 1) {
+        $level = 3;
+        $levelName = 'Pattern Finder';
+        $why = 'LottoExpert is starting to see a useful pattern for this lottery.';
+        $nextMilestone = 'Test one setting at a time to confirm the pattern.';
+        $achieved = 'A repeatable method or setting area has started to appear.';
+    } elseif ($runCount >= 5) {
+        $level = 2;
+        $levelName = 'Evidence Builder';
+        $why = 'Early patterns are starting to appear, but evidence is still young.';
+        $nextMilestone = 'Keep scoring runs until the same method or range repeats.';
+        $achieved = 'There is enough evidence to begin pattern tracking.';
+    }
+
+    $targets = array(
+        1 => array('runs' => 5,  'draws' => 1),
+        2 => array('runs' => 8,  'draws' => 1),
+        3 => array('runs' => 12, 'draws' => 2),
+        4 => array('runs' => 16, 'draws' => 2),
+        5 => array('runs' => 20, 'draws' => 3),
+        6 => array('runs' => 20, 'draws' => 3)
+    );
+    $target = isset($targets[$level]) ? $targets[$level] : $targets[1];
+    $runPct = $target['runs'] > 0 ? min(100, (int)round(($runCount / $target['runs']) * 100)) : 100;
+    $drawPct = $target['draws'] > 0 ? min(100, (int)round(($drawCount / $target['draws']) * 100)) : 100;
+    $progressPercent = ($level >= 6) ? 100 : (int)round(($runPct + $drawPct) / 2);
+    if ($level < 6) { $progressPercent = min(99, $progressPercent); }
+
+    return array(
+        'level' => $level,
+        'level_name' => $levelName,
+        'progress_percent' => $progressPercent,
+        'why' => $why,
+        'next_milestone' => $nextMilestone,
+        'achieved' => $achieved,
+        'evidence_line' => 'Evidence used: ' . $runCount . ' saved scored runs, ' . $drawCount . ' completed draw dates, stage ' . str_replace('_', ' ', $stage) . '.'
+    );
+}
+
 function mleAdvisoryBestVisualCompletedRow(array $visual) {
     $recent = isset($visual['recent']) && is_array($visual['recent']) ? $visual['recent'] : array();
     if (!empty($recent) && is_array($recent[0])) { return $recent[0]; }
@@ -4899,7 +5058,7 @@ function mleAdvisoryFormatSavedSettingName(array $row) {
 
 function mleAdvisoryBuildLotteryCard($db, $userId, $lotteryId, $lotteryName = '') {
     $userId=(int)$userId; $lotteryId=(int)$lotteryId;
-    $empty=array('lottery_id'=>$lotteryId,'lottery_name'=>$lotteryName,'has_data'=>false,'top_method'=>null,'leaderboard'=>array(),'settings_advice'=>array('has_advice'=>false),'proof_level'=>mleAdvisoryGetProofLevelLabel(0,0),'stats'=>array(),'visual_runs'=>array('recent'=>array(),'older'=>array(),'upcoming'=>array()),'batch_cleanup'=>null,'prediction_summary'=>array(),'saved_settings'=>array(),'numbers_to_play'=>array(),'wheel_systems'=>array());
+    $empty=array('lottery_id'=>$lotteryId,'lottery_name'=>$lotteryName,'has_data'=>false,'top_method'=>null,'leaderboard'=>array(),'settings_advice'=>array('has_advice'=>false),'proof_level'=>mleAdvisoryGetProofLevelLabel(0,0),'stats'=>array(),'visual_runs'=>array('recent'=>array(),'older'=>array(),'upcoming'=>array()),'batch_cleanup'=>null,'prediction_summary'=>array(),'saved_settings'=>array(),'numbers_to_play'=>array(),'wheel_systems'=>array(),'precision_lock'=>array(),'recommendation_level'=>array(),'precision_progress'=>array(),'recommended_skai_batch_test'=>array());
     if ($userId<=0 || $lotteryId<=0) { return $empty; }
     $activeAll=mleAdvisoryBuildActiveSavedEvidence($db,$userId);
     $activeRows=isset($activeAll[$lotteryId]['rows'])?$activeAll[$lotteryId]['rows']:array();
@@ -4951,10 +5110,13 @@ function mleAdvisoryBuildLotteryCard($db, $userId, $lotteryId, $lotteryName = ''
     $precisionLock = mleAdvisoryComputePrecisionLockData($perf, $savedById, $topMethod['method']);
     $why = mleAdvisoryBuildWhySupportText($topLabel, $topMethod, $visual, $precisionLock, $proof);
     $summary=array('total_runs'=>count($activeRows),'scored_draws'=>count(array_unique(array_filter(array_map(function($r){return (string)($r['draw_date']??'');},$perf)))),'best_analysis'=>$topLabel,'best_recipe'=>$bestRecipe,'keep_count'=>count($cleanup['keep']??array()),'watch_count'=>count($cleanup['review']??array()),'retire_count'=>count($cleanup['archive']??array()),'short_reason'=>$why,'individual_runs'=>$activeRows);
+    $recommendedBatchTest = mleAdvisoryBuildRecommendedSkaiBatchTest($precisionLock, $settingsAdv, $summary);
+    $recommendationLevel = mleAdvisoryComputeRecommendationLevel($precisionLock, $summary, $topMethod, $settingsAdv, $recommendedBatchTest);
+    $precisionProgress = mleAdvisoryComputePrecisionProgress($precisionLock, $summary, $recommendationLevel, $settingsAdv, $recommendedBatchTest);
     $settingsRows = mleAdvisoryLoadSavedSettingsForLottery($db, $userId, $lotteryId, 30);
     $playRows = mleAdvisoryLoadNumbersToPlayForLottery($db, $userId, $lotteryId, 30);
     $wheelRows = mleAdvisoryLoadFavoriteWheelsForLottery($db, $userId, $lotteryId, $activeRows, 12);
-    return array('lottery_id'=>$lotteryId,'lottery_name'=>$resolvedLotteryName,'has_data'=>true,'top_method'=>$topMethod,'leaderboard'=>$methods,'method_opinions'=>$methodOpinions,'settings_advice'=>$settingsAdv,'proof_level'=>$proof,'next_step'=>!empty($settingsAdv['has_advice'])?'Create the recommended next settings run and test only one change.':'Keep saving and scoring runs before changing settings.','what_to_do'=>'Use the visual run comparison to keep strong runs, remove noisy runs from advice, and create the next settings test.','decision'=>$decision,'why_support'=>$why,'base_run_id'=>$baseRunId,'stats'=>array('total_runs'=>$leaderboard['stats']['total_runs']??count($activeRows),'completed_draws'=>$leaderboard['stats']['total_draws']??0,'active_methods'=>$leaderboard['stats']['method_count']??0),'batch_cleanup'=>($cleanup['has_recommendation']??false)?$cleanup:null,'prediction_summary'=>$summary,'visual_runs'=>$visual,'active_rows'=>$activeRows,'saved_settings'=>$settingsRows,'numbers_to_play'=>$playRows,'wheel_systems'=>$wheelRows,'precision_lock'=>$precisionLock);
+    return array('lottery_id'=>$lotteryId,'lottery_name'=>$resolvedLotteryName,'has_data'=>true,'top_method'=>$topMethod,'leaderboard'=>$methods,'method_opinions'=>$methodOpinions,'settings_advice'=>$settingsAdv,'proof_level'=>$proof,'next_step'=>!empty($settingsAdv['has_advice'])?'Create the recommended next settings run and test only one change.':'Keep saving and scoring runs before changing settings.','what_to_do'=>'Use the visual run comparison to keep strong runs, remove noisy runs from advice, and create the next settings test.','decision'=>$decision,'why_support'=>$why,'base_run_id'=>$baseRunId,'stats'=>array('total_runs'=>$leaderboard['stats']['total_runs']??count($activeRows),'completed_draws'=>$leaderboard['stats']['total_draws']??0,'active_methods'=>$leaderboard['stats']['method_count']??0),'batch_cleanup'=>($cleanup['has_recommendation']??false)?$cleanup:null,'prediction_summary'=>$summary,'visual_runs'=>$visual,'active_rows'=>$activeRows,'saved_settings'=>$settingsRows,'numbers_to_play'=>$playRows,'wheel_systems'=>$wheelRows,'precision_lock'=>$precisionLock,'recommendation_level'=>$recommendationLevel,'precision_progress'=>$precisionProgress,'recommended_skai_batch_test'=>$recommendedBatchTest);
 }
 
 function mleAdvisoryLoadAllLotteryCards($db, $userId) {
@@ -12491,6 +12653,25 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   $__plkKeepLocked = htmlspecialchars($__plkKeepLockedRaw, ENT_QUOTES, 'UTF-8');
   $__plkTestNext = htmlspecialchars($__plkTestNextRaw, ENT_QUOTES, 'UTF-8');
   $__plkNotProven = htmlspecialchars($__plkNotProvenRaw, ENT_QUOTES, 'UTF-8');
+  $__advRecLevel = (array)($__advCard['recommendation_level'] ?? array());
+  $__advRecLabel = htmlspecialchars((string)($__advRecLevel['label'] ?? 'Learning Stage'), ENT_QUOTES, 'UTF-8');
+  $__advRecWhy = htmlspecialchars((string)($__advRecLevel['why'] ?? 'This lottery still needs more saved scored runs before a confident recommendation can be made.'), ENT_QUOTES, 'UTF-8');
+  $__advRecNext = htmlspecialchars((string)($__advRecLevel['next_milestone'] ?? 'Save and score more runs for this lottery.'), ENT_QUOTES, 'UTF-8');
+  $__advRecEvidence = htmlspecialchars((string)($__advRecLevel['evidence_line'] ?? ''), ENT_QUOTES, 'UTF-8');
+  $__advProg = (array)($__advCard['precision_progress'] ?? array());
+  $__advProgLevelName = htmlspecialchars((string)($__advProg['level_name'] ?? 'Getting Started'), ENT_QUOTES, 'UTF-8');
+  $__advProgPercent = max(0, min(100, (int)($__advProg['progress_percent'] ?? 0)));
+  $__advProgWhy = htmlspecialchars((string)($__advProg['why'] ?? 'You are building the first evidence set for this lottery.'), ENT_QUOTES, 'UTF-8');
+  $__advProgNext = htmlspecialchars((string)($__advProg['next_milestone'] ?? 'Save and score more runs for this lottery.'), ENT_QUOTES, 'UTF-8');
+  $__advProgAchieved = htmlspecialchars((string)($__advProg['achieved'] ?? ''), ENT_QUOTES, 'UTF-8');
+  $__advProgEvidence = htmlspecialchars((string)($__advProg['evidence_line'] ?? ''), ENT_QUOTES, 'UTF-8');
+  $__advBatchTest = (array)($__advCard['recommended_skai_batch_test'] ?? array());
+  $__advBatchHas = !empty($__advBatchTest['has_recommendation']);
+  $__advBatchTitle = htmlspecialchars((string)($__advBatchTest['title'] ?? 'Recommended SKAI Batch Test'), ENT_QUOTES, 'UTF-8');
+  $__advBatchSummary = htmlspecialchars((string)($__advBatchTest['summary'] ?? 'Not enough saved scored runs yet for a controlled SKAI batch test in this lottery.'), ENT_QUOTES, 'UTF-8');
+  $__advBatchPlan = htmlspecialchars((string)($__advBatchTest['test_plan'] ?? ''), ENT_QUOTES, 'UTF-8');
+  $__advBatchGuardrail = htmlspecialchars((string)($__advBatchTest['guardrail'] ?? 'Keep saving and scoring runs for this lottery first.'), ENT_QUOTES, 'UTF-8');
+  $__advBatchEvidence = htmlspecialchars((string)($__advBatchTest['evidence_line'] ?? ''), ENT_QUOTES, 'UTF-8');
   unset($____plkCtrlRaw);
 ?>
 <div class="mle-advisory-card mle-optimization-card" id="mle-adv-card-<?php echo $__advLid; ?>" data-lottery-id="<?php echo $__advLid; ?>">
@@ -12696,6 +12877,38 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         </div>
       </div>
       <p class="mle-precision-lock__summary"><?php echo $__plkSummary; ?></p>
+      <div class="mle-card-list-grid mle-plk-guidance-grid">
+        <div class="mle-mini-card">
+          <strong>Recommendation Level</strong>
+          <span><?php echo $__advRecLabel; ?></span>
+          <p><?php echo $__advRecWhy; ?></p>
+          <small><?php echo $__advRecEvidence !== '' ? $__advRecEvidence : 'Evidence is still forming for this lottery.'; ?></small>
+        </div>
+        <div class="mle-mini-card">
+          <strong>Precision Progress</strong>
+          <span><?php echo $__advProgLevelName; ?> - <?php echo $__advProgPercent; ?>% to next level</span>
+          <p><?php echo $__advProgWhy; ?></p>
+          <small><?php echo $__advProgEvidence !== '' ? $__advProgEvidence : 'Evidence is still forming for this lottery.'; ?></small>
+        </div>
+        <div class="mle-mini-card">
+          <strong>Next milestone</strong>
+          <span>What to do now</span>
+          <p><?php echo $__advProgNext; ?></p>
+          <small><?php echo $__advProgAchieved !== '' ? ('Achieved: ' . $__advProgAchieved) : ('Recommendation milestone: ' . $__advRecNext); ?></small>
+        </div>
+      </div>
+      <div class="mle-skai-batch-test">
+        <div class="mle-skai-batch-test__title"><?php echo $__advBatchTitle; ?></div>
+        <p class="mle-skai-batch-test__summary"><?php echo $__advBatchSummary; ?></p>
+        <?php if ($__advBatchHas): ?>
+          <div class="mle-skai-batch-test__line"><strong>Batch plan:</strong> <?php echo $__advBatchPlan; ?></div>
+          <div class="mle-skai-batch-test__line"><strong>Guardrail:</strong> <?php echo $__advBatchGuardrail; ?></div>
+          <div class="mle-skai-batch-test__line"><strong>Evidence used:</strong> <?php echo $__advBatchEvidence; ?></div>
+        <?php else: ?>
+          <div class="mle-skai-batch-test__line"><strong>What to do first:</strong> <?php echo $__advBatchGuardrail; ?></div>
+          <div class="mle-skai-batch-test__line"><strong>Current evidence:</strong> <?php echo $__advBatchEvidence; ?></div>
+        <?php endif; ?>
+      </div>
     </section>
 
     <section class="mle-next-settings-run" id="<?php echo $__advNextRunSectionId; ?>">
@@ -13755,6 +13968,43 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   font-size:.9rem;
   color:#334155;
   line-height:1.55;
+}
+.mle-plk-guidance-grid .mle-mini-card small{
+  display:block;
+  margin-top:6px;
+  color:#64748b;
+  line-height:1.4;
+  font-size:.75rem;
+}
+.mle-skai-batch-test{
+  margin-top:12px;
+  border:1px solid rgba(127,141,170,.25);
+  background:#ffffff;
+  border-radius:12px;
+  padding:12px 14px;
+}
+.mle-skai-batch-test__title{
+  font-size:.82rem;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:#0A1A33;
+  font-weight:900;
+  margin-bottom:4px;
+}
+.mle-skai-batch-test__summary{
+  color:#334155;
+  font-size:.86rem;
+  line-height:1.45;
+  margin:0 0 8px;
+}
+.mle-skai-batch-test__line{
+  color:#475569;
+  font-size:.8rem;
+  line-height:1.45;
+  margin:4px 0;
+}
+.mle-skai-batch-test__line strong{
+  color:#0A1A33;
 }
 @media(max-width:900px){
   .mle-precision-lock__steps{flex-direction:column;}
