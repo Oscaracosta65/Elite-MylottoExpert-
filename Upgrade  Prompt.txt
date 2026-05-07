@@ -1,0 +1,1881 @@
+You are working on the latest MyLottoExpert production PHP file:
+
+MyLottoExpert_Elite_Command_Center_v19.php
+
+You must compare against the original MyLottoExpert file when needed:
+
+Orig MyLotto 04 06 26.txt
+
+Reference concept:
+https://lottoexpert.net/blog/precision-lock-methodology
+
+Your job is to make MyLottoExpert closer to an elite, world-class, best-of-the-best lottery decision, learning, narrowing, and progress workspace.
+
+Do not do a broad rewrite.
+
+The current file is mostly working. Preserve working behavior. This must be a careful surgical upgrade focused on SKAI Precision Lock intelligence, Elite Recommendation Level maturity, Recommended SKAI Batch Tests, Precision Progress levels, clarity, compliance, and evidence-based guidance.
+
+============================================================
+PRIMARY GOAL
+============================================================
+
+MyLottoExpert must become the user's central lottery decision workspace.
+
+The page must help the user reach this objective:
+
+Identify the most consistent settings pattern for each saved lottery, then narrow toward the strongest repeatable settings window using saved evidence, completed draw results, visual proof, controlled one-setting-at-a-time tests, intelligent SKAI batch tests, and per-lottery progress levels.
+
+SKAI Precision Lock is not just a visual range bar.
+
+SKAI Precision Lock is the process of:
+
+1. Reviewing saved and scored runs for one lottery.
+2. Finding which methods and settings are performing best for that lottery.
+3. Identifying which settings are stable enough to keep.
+4. Identifying which settings are not proven yet.
+5. Recommending one controlled setting test at a time.
+6. Recommending an intelligent SKAI batch test when enough evidence exists.
+7. Measuring whether those changes move the lottery closer to a stronger repeatable range.
+8. Narrowing over time toward the most consistent settings window.
+9. Moving each lottery through Precision Progress levels.
+10. Moving each lottery toward an Elite Recommendation Level only when the evidence supports it.
+
+The final user experience should feel like:
+
+"This page tells me what is working, why it is working, what to keep, what to test next, what SKAI batch to run if I want deeper testing, what progress level this lottery has reached, and how close I am to a stronger settings window for this lottery."
+
+============================================================
+DO NOT BREAK WORKING FUNCTIONALITY
+============================================================
+
+Do not change anything unrelated to the requested improvements.
+
+Do not change:
+
+- database table names
+- existing POST action names unless adding a new required action
+- existing form field names unless adding new required fields
+- existing delete actions
+- existing save actions
+- CSRF logic
+- user ownership checks
+- demo mode checks
+- saved prediction loading
+- saved settings loading
+- saved numbers loading
+- favorite lotteries loading
+- favorite wheeling systems loading
+- actual draw parsing
+- extra ball parsing
+- lottery name resolution
+- lottery logo logic
+- ball rendering logic
+- expand and collapse logic
+- current visual run comparison logic
+- current deduplication logic
+- current sorting logic
+
+Only modify a function if it is directly needed to fix one of the issues in this prompt.
+
+If something works, preserve it.
+
+============================================================
+SOURCE OF TRUTH RULE
+============================================================
+
+The original MyLottoExpert file is still the source of truth for:
+
+- lottery names
+- lottery logos
+- favorite lotteries
+- favorite wheeling systems
+- actual draw parsing
+- extra bonus ball parsing
+- ball colors and ball styling
+- saved predictions
+- saved numbers
+- saved settings
+- save actions
+- delete actions
+- Joomla CSRF checks
+- user ownership checks
+- demo mode checks
+
+Do not invent new logic where the original file already has working behavior.
+
+If the latest file already correctly uses original behavior, leave it alone.
+
+============================================================
+WHAT MUST BE IMPROVED IN THIS PASS
+============================================================
+
+This pass must focus only on these improvements:
+
+1. Remove remaining glyphs, icon entities, emoji, and decorative special characters.
+2. Upgrade SKAI Precision Lock from a basic range display into a settings consistency advisor.
+3. Make every SKAI Precision Lock range clearly lottery-specific.
+4. Add a clear "Keep Locked / Test Next / Not Proven Yet" breakdown for each lottery.
+5. Tie Recommended Next Settings Run directly to the SKAI Precision Lock objective.
+6. Add Recommended SKAI Batch Test inside each lottery card when enough evidence exists.
+7. Add a per-lottery Recommendation Level that matures toward Elite Recommendation Level.
+8. Add per-lottery Precision Progress levels so the user can see progress toward stronger recommendations.
+9. Strengthen the evidence explanation with actual available proof.
+10. Make the page more beginner-friendly without hiding the useful evidence.
+11. Avoid fake confidence or unsupported claims.
+12. Preserve all working data sources and page behavior.
+13. Keep Favorite Lotteries and Favorite Wheeling Systems working at the bottom.
+
+============================================================
+STRICT ASCII, UTF-8, AND NO-GLYPH REQUIREMENT
+============================================================
+
+The file must remain UTF-8 compliant, but all new UI text, labels, PHP strings, JavaScript strings, CSS comments, PHP comments, and class names must be ASCII-safe.
+
+Do not introduce or leave decorative special characters.
+
+Remove or replace:
+
+- emoji
+- glyphs
+- icon entities
+- smart quotes
+- curly apostrophes
+- en dash
+- em dash
+- ellipsis character
+- non-breaking spaces
+- decorative arrows
+- checkmarks
+- stars
+- special Unicode bullets
+- icon fonts
+- SVG icons
+- mathematical symbols
+- decorative pseudo-element symbols
+- non-ASCII separators
+
+Allowed:
+
+- normal hyphen: -
+- straight quotes: " and '
+- three periods: ...
+- plain text labels
+- standard ASCII characters
+
+Search and remove decorative entities or symbols such as:
+
+- &#x1F4CB;
+- &#x2705;
+- &#x23F3;
+- &#x1F3AF;
+- &#8593;
+- &#8594;
+- &#8595;
+- &#8212;
+- \25CF
+- any CSS content value used only to show a decorative dot, arrow, icon, or symbol
+
+Do not remove normal required escaping entities such as:
+
+- &amp;
+- &lt;
+- &gt;
+- &quot;
+
+If a visual marker is needed, use borders, background colors, spacing, text labels, or CSS shapes that do not rely on glyph content.
+
+============================================================
+STRICT ES5 JAVASCRIPT REQUIREMENT
+============================================================
+
+All JavaScript must remain ES5-compatible.
+
+Do not use:
+
+- let
+- const
+- arrow functions
+- template literals
+- JavaScript backticks
+- optional chaining
+- nullish coalescing
+- classes
+- for...of
+- async
+- await
+- spread syntax
+- destructuring
+- default parameters
+- import
+- export
+
+Use only:
+
+- var
+- function declarations
+- function expressions
+- standard for loops
+- string concatenation with +
+- addEventListener
+- defensive null checks
+
+Do not rewrite JavaScript unless directly necessary.
+
+If changing click handling, use delegated ES5-compatible event handling.
+
+Buttons must work when clicking child spans or nested text.
+
+============================================================
+STRICT PHP 8.1, JOOMLA, AND SORCERER REQUIREMENT
+============================================================
+
+The file must remain compatible with:
+
+- Joomla 5.1.2
+- PHP 8.1.31
+- Sorcerer
+- UTF-8
+
+Do not break [[ ]] tags.
+Do not use short PHP open tags.
+
+Every write action must preserve:
+
+- POST only
+- Joomla CSRF check
+- user_id ownership check
+- demo mode block
+- safe database queries
+- safe redirect after successful POST where already used
+
+Do not remove security checks.
+
+Do not interpolate raw user input into SQL.
+
+============================================================
+STRICT COUNT AND ARRAY SAFETY
+============================================================
+
+No count() call may receive null.
+
+Before count(), guard values safely.
+
+Use:
+
+$count = is_array($value) ? count($value) : 0;
+
+or:
+
+if (!is_array($value)) {
+    $value = array();
+}
+
+Apply this to:
+
+- saved prediction arrays
+- performance arrays
+- comparison arrays
+- draw arrays
+- main ball arrays
+- extra ball arrays
+- favorite lottery arrays
+- favorite wheeling arrays
+- decoded JSON arrays
+- SKAI Precision Lock arrays
+- Recommended SKAI Batch Test arrays
+- Recommendation Level arrays
+- Precision Progress arrays
+
+Every json_decode result must be checked with is_array() before being used as an array.
+
+============================================================
+SKAI PRECISION LOCK: CORE CONCEPT
+============================================================
+
+Inside each lottery card, SKAI Precision Lock must be treated as the user's narrowing engine.
+
+Do not treat SKAI Precision Lock as only a percentage range.
+
+The section must explain:
+
+"SKAI Precision Lock is tracking which settings are producing the most consistent evidence for this lottery, then helping you test one controlled change at a time."
+
+The section must show:
+
+1. The current Precision Lock stage.
+2. The current lottery-specific range.
+3. What that range represents.
+4. What settings appear stable enough to keep.
+5. What one setting should be tested next.
+6. What is not proven yet.
+7. What evidence supports the current recommendation.
+8. Whether there is enough evidence to narrow or if the user should keep scoring saved runs.
+9. Whether an intelligent SKAI batch test is available.
+10. The current Recommendation Level for this lottery.
+11. The current Precision Progress level for this lottery.
+
+============================================================
+LOTTERY-SPECIFIC PRECISION LOCK REQUIREMENT
+============================================================
+
+The SKAI Precision Lock range is not global.
+
+Every lottery must calculate its own independent SKAI Precision Lock range.
+
+For each lottery card:
+
+- use only active saved evidence for that lottery
+- use only completed scored runs for that lottery
+- use only active saved runs that belong to that lottery
+- use only that lottery's settings
+- use only that lottery's performance records that can be tied back to active saved runs
+
+Do not mix evidence across lotteries.
+
+Do not use Fantasy 5 evidence for EuroMillions.
+Do not use EuroMillions evidence for Powerball.
+Do not use Powerball evidence for Mega Millions.
+Do not use one lottery's best method, blend, mode, window, or settings profile as another lottery's recommendation.
+
+Each SKAI Precision Lock section must clearly state:
+
+"This range is based only on your saved and scored runs for this lottery."
+
+If that exact sentence is already present, keep it.
+
+If not present, add it.
+
+============================================================
+PRECISION LOCK RANGE DISPLAY
+============================================================
+
+Inside each lottery card, keep or improve the dynamic 0 to 100 horizontal range display.
+
+It must show:
+
+- 0 on the left
+- 100 on the right
+- the current strongest range for this lottery
+- the refined range if enough evidence exists
+- the current sweet spot if enough evidence exists
+- a stage label
+
+Use simple ASCII stage labels:
+
+- Broad testing
+- Early pattern
+- Better range forming
+- Narrowing
+- SKAI Precision Lock range
+
+Do not hardcode the same range for every lottery.
+
+Do not invent random percentages.
+
+If there is not enough evidence for a lottery, show:
+
+"Not enough saved scored runs yet for this lottery. Keep saving runs for this lottery before narrowing the range further."
+
+Do not show a fake narrow range when evidence is weak.
+
+============================================================
+WHAT THE RANGE REPRESENTS
+============================================================
+
+The range must be labeled clearly.
+
+If the range is based on blend percentage, say:
+
+"Range basis: SKAI blend percentage"
+
+If the range is based on window size, say:
+
+"Range basis: window size"
+
+If the range is based on draws analyzed, say:
+
+"Range basis: draws analyzed"
+
+If the range is based on another setting, name it in plain English.
+
+If the code cannot identify a reliable setting basis, say:
+
+"Range basis: still forming"
+
+Do not let the user think the range is a jackpot probability.
+
+Do not imply the range guarantees a result.
+
+The range is a settings narrowing guide, not a winning guarantee.
+
+============================================================
+KEEP LOCKED / TEST NEXT / NOT PROVEN YET
+============================================================
+
+Add or improve a clear breakdown inside each lottery card's SKAI Precision Lock area.
+
+Use these labels:
+
+Keep Locked
+Test Next
+Not Proven Yet
+
+Keep Locked:
+Show settings that should not be changed right now because they are part of the strongest current evidence.
+
+Examples:
+
+- method
+- run mode
+- blend range
+- window size
+- best window setting
+- auto-tune setting
+- draws analyzed
+- recency decay
+- diversity penalty
+
+Only show a setting in Keep Locked if the active saved evidence for that lottery supports it.
+
+Test Next:
+Show the one setting the user should test next.
+
+This must align with Recommended Next Settings Run and Recommended SKAI Batch Test.
+
+There should not be conflicting recommendations.
+
+Examples:
+
+- reduce window size one step
+- increase blend slightly
+- enable best window
+- adjust diversity penalty one step
+- keep mode stable and test only blend range
+
+Not Proven Yet:
+Show settings where the evidence is not strong enough.
+
+Examples:
+
+- not enough scored saved runs
+- not enough completed draws
+- method has only one saved result
+- blend range is too scattered
+- not enough evidence to isolate this setting
+
+Do not fake certainty.
+
+If there is weak evidence, clearly say that more saved scored runs are needed.
+
+============================================================
+ELITE RECOMMENDATION INTELLIGENCE GOAL
+============================================================
+
+MyLottoExpert must become more intelligent for each lottery over time.
+
+The goal is not only to show saved predictions or a visual comparison.
+
+The goal is to help each lottery move toward an Elite Recommendation Level.
+
+Elite Recommendation Level means:
+
+1. The page has enough saved and scored evidence for that specific lottery.
+2. The strongest method is supported by repeated results, not one lucky outlier.
+3. The strongest settings pattern is becoming clear.
+4. The Precision Lock range is narrowing in a logical way.
+5. The page can explain what to keep locked.
+6. The page can explain what to test next.
+7. The page can explain what is not proven yet.
+8. The page can recommend either one clean next run or a controlled SKAI batch test.
+9. The user understands why the recommendation exists.
+10. The recommendation is lottery-specific, evidence-based, and plain English.
+
+This intelligence must be built into each lottery card.
+
+Do not make one global recommendation engine for the whole page.
+
+Each lottery must have its own independent recommendation intelligence.
+
+============================================================
+ELITE RECOMMENDATION LEVELS
+============================================================
+
+Add an internal recommendation maturity level for each lottery.
+
+Use plain-English levels:
+
+1. Learning Stage
+2. Early Pattern
+3. Stronger Range Forming
+4. Precision Lock Candidate
+5. Elite Recommendation Level
+
+These levels must be calculated independently for each lottery.
+
+Learning Stage:
+
+- not enough saved scored runs
+- no confident recommendation yet
+- user should keep saving and scoring runs
+
+Early Pattern:
+
+- some signal appears
+- not enough repeated evidence yet
+- page may suggest what to watch, but should avoid strong claims
+
+Stronger Range Forming:
+
+- repeated better results are appearing
+- page can recommend one controlled next test
+- Precision Lock range may be broad but meaningful
+
+Precision Lock Candidate:
+
+- strongest settings are clustering
+- one or more settings should stay locked
+- one controlled setting should be tested next
+- batch testing may be useful
+
+Elite Recommendation Level:
+
+- enough saved scored evidence exists
+- strongest method is repeatedly supported
+- strongest settings range is clear
+- page can explain the recommendation with proof
+- page can recommend a focused next run or controlled SKAI batch
+- page can clearly state what to keep locked, what to test, and what is not proven
+
+Do not label a lottery as Elite Recommendation Level unless the evidence supports it.
+
+============================================================
+ELITE LEVEL EVIDENCE REQUIREMENTS
+============================================================
+
+A lottery should only reach Elite Recommendation Level when several evidence conditions are met.
+
+Suggested minimum requirements:
+
+1. At least 20 active saved scored runs for that lottery.
+2. At least 3 completed draw dates with scored evidence.
+3. A strongest method appears repeatedly.
+4. A strongest settings range or setting pattern appears repeatedly.
+5. The best recommendation is not based on only one outlier.
+6. The current Precision Lock range is narrower than the original broad test range.
+7. The system can identify:
+   - Keep Locked
+   - Test Next
+   - Not Proven Yet
+8. The recommendation can cite actual evidence:
+   - saved scored run count
+   - completed draw count
+   - best result
+   - best draw date if available
+   - strongest method
+   - strongest range or settings pattern
+
+If these are not met, show the correct lower maturity level.
+
+Do not fake confidence.
+
+============================================================
+PRECISION PROGRESS AND MILESTONE LEVELS
+============================================================
+
+Add a per-lottery progression system that helps the user understand how close each lottery is to a stronger SKAI Precision Lock recommendation.
+
+This should feel motivating, but it must stay ethical and evidence-based.
+
+Do not present it as a gambling game.
+Do not imply guaranteed winnings.
+Do not use hype language such as profitable game, sure win, jackpot path, or guaranteed result.
+
+The progression system should reward the user for building better evidence and narrowing intelligently.
+
+Use this concept:
+
+Each lottery advances through Precision Progress levels as the user saves runs, compares them against completed draw results, identifies consistent settings, and narrows toward a stronger SKAI Precision Lock range.
+
+Progression is lottery-specific.
+
+Each lottery has its own progress level.
+
+Do not calculate one global user level for all lotteries.
+
+Fantasy 5 Evening has its own progress.
+EuroMillions has its own progress.
+Powerball has its own progress.
+Mega Millions has its own progress.
+
+Do not mix evidence between lotteries.
+
+Each lottery card should show:
+
+- Current Precision Progress level
+- Progress toward the next level
+- What was achieved
+- What is needed next
+- Why the current level was earned
+
+============================================================
+PRECISION PROGRESS LEVELS
+============================================================
+
+Use these plain-English levels:
+
+Level 1: Getting Started
+
+Meaning:
+The user has saved early runs, but there is not enough scored evidence yet.
+
+User message:
+"You are building the first evidence set for this lottery."
+
+Next milestone:
+"Save and score more runs for this lottery."
+
+Level 2: Evidence Builder
+
+Meaning:
+The lottery has enough saved scored runs to start seeing early signals.
+
+User message:
+"Early patterns are starting to appear, but the evidence is still young."
+
+Next milestone:
+"Keep scoring saved runs until the same method or range repeats."
+
+Level 3: Pattern Finder
+
+Meaning:
+A method or settings area is beginning to repeat stronger results.
+
+User message:
+"LottoExpert is starting to see a useful pattern for this lottery."
+
+Next milestone:
+"Test one setting at a time to confirm the pattern."
+
+Level 4: Range Narrower
+
+Meaning:
+A stronger settings range is forming and the user can start narrowing.
+
+User message:
+"This lottery has a stronger range forming. Keep the best settings stable and test one change at a time."
+
+Next milestone:
+"Confirm the range across more completed draws."
+
+Level 5: Precision Lock Candidate
+
+Meaning:
+The lottery has enough repeated evidence to support a focused range.
+
+User message:
+"This lottery is close to a Precision Lock range. The next tests should be focused and controlled."
+
+Next milestone:
+"Run a controlled SKAI batch inside the current range."
+
+Level 6: Elite Recommendation Level
+
+Meaning:
+The lottery has enough saved scored evidence, repeated support, a clear range, and a reliable next action.
+
+User message:
+"This lottery has reached an elite evidence level. The recommendation is supported by repeated saved and scored results."
+
+Next milestone:
+"Keep validating the range after each completed draw."
+
+============================================================
+PRECISION PROGRESS CALCULATION
+============================================================
+
+Calculate the progression level from real evidence only.
+
+Use only the current lottery's active saved and scored evidence.
+
+Suggested inputs:
+
+- active saved scored run count
+- completed draw count
+- number of unique completed draw dates
+- strongest method repeat count
+- repeated settings cluster
+- Precision Lock range width
+- consistency across runs
+- top10 hits
+- top20 hits
+- total hits
+- average winning rank
+- whether Keep Locked / Test Next / Not Proven Yet can be identified
+- whether a Recommended SKAI Batch Test can be generated
+- current Recommendation Level
+
+Do not award progress based on unsaved runs.
+Do not award progress from another lottery's data.
+Do not award progress from deleted data.
+Do not award progress from one lucky outlier alone.
+
+============================================================
+PRECISION PROGRESS BAR DISPLAY
+============================================================
+
+Inside each lottery card, add a compact Precision Progress display near the Recommendation Level and SKAI Precision Lock area.
+
+It should show:
+
+- Current level name
+- Progress percentage to next level
+- Next milestone
+- Evidence used
+- Plain-English reason
+
+Example:
+
+Precision Progress:
+Pattern Finder
+
+Progress to next level:
+62%
+
+Why:
+"This lottery has 9 saved scored runs and a repeated SKAI signal, but it needs more completed draw evidence before narrowing further."
+
+Next milestone:
+"Reach 10 saved scored runs and confirm whether the 58 to 68 range repeats."
+
+Do not use icons, emoji, glyphs, or special characters.
+
+============================================================
+GRADUATION MOMENTS
+============================================================
+
+When a lottery reaches a new level, show a calm achievement message.
+
+Use plain text only.
+
+Examples:
+
+"New milestone reached: Pattern Finder"
+"New milestone reached: Range Narrower"
+"New milestone reached: Precision Lock Candidate"
+"New milestone reached: Elite Recommendation Level"
+
+Do not use confetti.
+Do not use emoji.
+Do not use icons.
+Do not use sounds.
+Do not use gambling hype.
+
+The milestone should feel premium and motivating, not childish.
+
+If no reliable prior milestone state is stored, do not fake a new milestone. In that case, simply show the current level and next milestone.
+
+============================================================
+REWARDS SHOULD BE PRACTICAL, NOT DECORATIVE
+============================================================
+
+Each level should unlock better guidance, not cosmetic rewards.
+
+Examples:
+
+Level 1:
+Show basic guidance only.
+
+Level 2:
+Show early evidence summary.
+
+Level 3:
+Show Keep Locked / Test Next / Not Proven Yet.
+
+Level 4:
+Show stronger Precision Lock range.
+
+Level 5:
+Show Recommended SKAI Batch Test.
+
+Level 6:
+Show Elite Recommendation Level with strongest evidence summary and focused next action.
+
+This makes progress meaningful.
+
+============================================================
+ETHICAL LANGUAGE RULE
+============================================================
+
+Do not say:
+
+- profitable game
+- guaranteed profit
+- guaranteed win
+- jackpot lock
+- sure win
+- cannot miss
+- winning formula
+- money maker
+- guaranteed result
+
+Use:
+
+- evidence progress
+- stronger evidence
+- better-supported recommendation
+- narrowing progress
+- Precision Progress
+- current best-supported range
+- more disciplined testing
+- controlled SKAI batch
+- stronger recommendation level
+- stronger saved evidence
+- current best-supported settings
+
+============================================================
+PER-LOTTERY INTELLIGENCE ENGINE
+============================================================
+
+For each lottery card, build or improve a per-lottery intelligence summary.
+
+The summary must answer:
+
+1. What is the current recommendation maturity level for this lottery?
+2. What is the current Precision Progress level for this lottery?
+3. What evidence exists for this lottery?
+4. Which method is leading for this lottery?
+5. Which settings are most consistent for this lottery?
+6. Which range is forming for this lottery?
+7. What should the user keep locked?
+8. What should the user test next?
+9. What is not proven yet?
+10. Should the user create one recommended next run?
+11. Should the user create a recommended SKAI batch test?
+12. What evidence is still missing before this reaches Elite Recommendation Level?
+13. What is the next milestone for this lottery?
+
+This should be shown in plain English.
+
+Example:
+
+Recommendation Level:
+Stronger Range Forming
+
+Precision Progress:
+Pattern Finder
+
+What this means:
+"This lottery is starting to show a useful pattern. SKAI has the strongest saved scored support so far, and the best results are clustering near the 58 to 68 blend range. Keep the current method and mode stable. Test only one blend adjustment next."
+
+What is missing:
+"More completed scored draws are needed before this can be considered an Elite Recommendation."
+
+Next milestone:
+"Confirm whether the same range repeats across more completed draws."
+
+============================================================
+ELITE RECOMMENDATION STATUS DISPLAY
+============================================================
+
+Inside each lottery card, add or improve a clear status display.
+
+Use this heading:
+
+Recommendation Level
+
+Show one of these:
+
+- Learning Stage
+- Early Pattern
+- Stronger Range Forming
+- Precision Lock Candidate
+- Elite Recommendation Level
+
+Also show:
+
+- Evidence strength
+- Saved scored runs
+- Completed draw dates
+- Current leading method
+- Current Precision Lock stage
+- Precision Progress level
+- Next milestone
+- Next best action
+
+Keep the wording simple.
+
+Do not use icons, emoji, glyphs, or special characters.
+
+============================================================
+DO NOT OVERSTATE RESULTS
+============================================================
+
+This page must remain ethical and evidence-based.
+
+Do not say:
+
+- guaranteed
+- sure win
+- jackpot lock
+- cannot miss
+- winning formula
+- certain outcome
+- profitable game
+- guaranteed profit
+
+Use careful language:
+
+- strongest evidence so far
+- current best-supported range
+- better-performing saved runs
+- not enough evidence yet
+- this test is designed to learn
+- this setting is not proven yet
+- keep measuring after completed draws
+- this level reflects evidence quality, not a guaranteed outcome
+
+============================================================
+RECOMMENDATION QUALITY RULE
+============================================================
+
+Every recommendation must answer "why."
+
+If the page recommends keeping a setting, explain why.
+
+If the page recommends testing a setting, explain why.
+
+If the page says not enough evidence exists, explain what evidence is missing.
+
+If the page recommends a SKAI batch, explain what the batch is designed to prove.
+
+If the page assigns a Precision Progress level, explain why that level was earned.
+
+No recommendation should appear without a reason.
+
+============================================================
+RECOMMENDED NEXT SETTINGS RUN MUST SUPPORT PRECISION LOCK
+============================================================
+
+The Recommended Next Settings Run section must directly connect to SKAI Precision Lock.
+
+It must explain:
+
+"LottoExpert will copy your strongest current settings for this lottery, change only one setting, and save it as a new test run. After the next draw, you can compare whether that one change moved this lottery closer to its SKAI Precision Lock range."
+
+The button label must be:
+
+Create Recommended Next Settings Run
+
+Do not use:
+
+- Create Advisory Recipe
+- Create Recipe
+- Advisory Recipe
+
+The recommendation must show:
+
+- Base run
+- Best method
+- Best current settings
+- Setting to test
+- Current value
+- Recommended value
+- Why this change
+- What this test is trying to prove
+- How this supports SKAI Precision Lock
+- Which Precision Progress milestone it supports
+
+The created run must copy the full base settings and change only one setting.
+
+Do not save a partial settings record.
+
+Do not recommend a setting change if there is not enough evidence.
+
+If there is not enough evidence, show:
+
+"Keep scoring saved runs first. A recommended settings test will appear once this lottery has enough evidence."
+
+============================================================
+RECOMMENDED SKAI BATCH TEST REQUIREMENT
+============================================================
+
+Add a new section inside each lottery card called:
+
+Recommended SKAI Batch Test
+
+This section must be based on the SKAI Precision Lock evidence for that specific lottery.
+
+The purpose is to let the user create a small intelligent batch of SKAI runs from the lottery-specific Precision Lock range and strongest settings evidence.
+
+This is not a random batch generator.
+
+This is not a broad guessing tool.
+
+This must be a controlled evidence-based batch builder designed to help the user narrow toward the most consistent settings window.
+
+============================================================
+BATCH TEST OBJECTIVE
+============================================================
+
+The batch test should help answer:
+
+"Which exact setting inside this lottery's current Precision Lock range performs best when everything else is held stable?"
+
+The batch must:
+
+1. Use only this lottery's active saved evidence.
+2. Use only this lottery's completed scored runs.
+3. Use the strongest current base settings for this lottery.
+4. Keep proven settings locked.
+5. Change only one main test variable across the batch.
+6. Include the current best settings as a control run.
+7. Save each batch item as a full runnable SKAI settings record.
+8. Clearly label each batch run so the user understands what is being tested.
+9. Support the lottery's Recommendation Level and SKAI Precision Lock objective.
+10. Support the next Precision Progress milestone.
+
+============================================================
+BATCH TEST MUST BE LOTTERY-SPECIFIC
+============================================================
+
+Each lottery card must generate its own Recommended SKAI Batch Test.
+
+Do not use a global batch.
+
+Do not mix evidence between lotteries.
+
+Fantasy 5 batch tests must use only Fantasy 5 evidence.
+
+EuroMillions batch tests must use only EuroMillions evidence.
+
+Powerball batch tests must use only Powerball evidence.
+
+The section must clearly say:
+
+"This batch is based only on your saved and scored runs for this lottery."
+
+============================================================
+WHEN TO SHOW A BATCH TEST
+============================================================
+
+Show Recommended SKAI Batch Test only when there is enough evidence to make a controlled batch useful.
+
+Suggested rules:
+
+If fewer than 5 saved scored runs exist for this lottery:
+
+- Do not recommend a batch.
+- Show: "Keep saving scored runs first. A SKAI batch test will appear once this lottery has enough evidence."
+
+If 5 to 9 saved scored runs exist:
+
+- Allow a small early batch only if a clear setting range is forming.
+- Limit to 3 runs plus 1 control.
+
+If 10 to 19 saved scored runs exist:
+
+- Recommend a focused batch of 4 runs plus 1 control.
+
+If 20 or more saved scored runs exist:
+
+- Recommend a stronger Precision Lock batch of 5 to 7 runs plus 1 control.
+
+Do not create a batch if the evidence is scattered and no useful setting range can be identified.
+
+In that case show:
+
+"The evidence for this lottery is still too scattered for a clean batch test. Save more scored runs before narrowing."
+
+============================================================
+BATCH TEST VARIABLE SELECTION
+============================================================
+
+The batch should test only one main variable at a time.
+
+Choose the test variable from the strongest available evidence.
+
+Priority order:
+
+1. SKAI blend percentage or AI blend percentage
+2. SKAI window size
+3. draws analyzed
+4. diversity penalty
+5. sampling temperature
+6. recency decay
+7. best window on or off
+8. auto-tune on or off
+
+Do not change multiple unrelated settings in the same batch.
+
+Do not change mode, blend, window size, diversity penalty, and recency decay all at once.
+
+If the strongest evidence is blend percentage, create a batch across the recommended blend range.
+
+If the strongest evidence is window size, create a batch across nearby window sizes.
+
+If the strongest evidence is draws analyzed, create a batch across nearby draw-count values.
+
+If the strongest evidence is not strong enough to isolate one variable, do not create a batch.
+
+============================================================
+BATCH TEST STRUCTURE
+============================================================
+
+Each Recommended SKAI Batch Test must show:
+
+- Batch purpose
+- Lottery name
+- Recommendation Level
+- Precision Progress level
+- Evidence level
+- Range basis
+- Current Precision Lock range
+- Locked settings
+- Test variable
+- Batch runs to create
+- Control run
+- What this batch is trying to prove
+- Which next milestone this supports
+
+Example display:
+
+Batch purpose:
+"Test the strongest blend range for this lottery while keeping the rest of the setup stable."
+
+Locked settings:
+
+- Method: SKAI
+- Mode: Balanced
+- Window size: 45
+- Best Window: On
+- Auto-tune: On
+
+Test variable:
+
+- SKAI blend percentage
+
+Batch runs:
+
+- Control: current best settings
+- Test 1: 58% blend
+- Test 2: 61% blend
+- Test 3: 64% blend
+- Test 4: 67% blend
+
+What this proves:
+"If the stronger results continue to appear in this range, LottoExpert can narrow the Precision Lock range further after the next completed draw."
+
+Milestone supported:
+"Confirm the range across more completed draws."
+
+============================================================
+BATCH SIZE RULES
+============================================================
+
+Keep the batch small and useful.
+
+Do not generate huge batches.
+
+Default maximum:
+
+- Early evidence: 4 total runs including control
+- Moderate evidence: 5 total runs including control
+- Strong evidence: 8 total runs including control
+
+Never create more than 9 runs in one recommended batch unless the user explicitly chooses an advanced option.
+
+The goal is precision, not volume.
+
+============================================================
+CONTROL RUN REQUIREMENT
+============================================================
+
+Every batch must include a control run.
+
+The control run must copy the current strongest settings exactly.
+
+It must be labeled:
+
+Control - Current Best Settings
+
+The control run allows the user to compare whether the changed setting actually helped.
+
+============================================================
+BATCH SAVE ACTION REQUIREMENT
+============================================================
+
+Add a button:
+
+Create Recommended SKAI Batch Test
+
+When clicked, this must save the full batch as runnable SKAI settings records.
+
+Each saved batch run must:
+
+1. Copy the full base settings.
+2. Change only the one test variable.
+3. Preserve lottery_id.
+4. Preserve source as SKAI where applicable.
+5. Preserve user_id ownership.
+6. Preserve target lottery context.
+7. Include a clear setting name.
+8. Include batch metadata if a safe column exists or inside params/settings JSON.
+
+Suggested naming:
+
+SKAI Precision Lock Batch - Control
+SKAI Precision Lock Batch - Blend 58
+SKAI Precision Lock Batch - Blend 61
+SKAI Precision Lock Batch - Blend 64
+SKAI Precision Lock Batch - Blend 67
+
+Do not save partial settings records.
+
+Do not silently fail.
+
+If the batch cannot be created, show a clear message explaining why.
+
+============================================================
+BATCH SECURITY REQUIREMENTS
+============================================================
+
+The batch creation action must use:
+
+- POST only
+- Joomla CSRF token
+- user_id ownership check
+- demo mode block
+- safe database query construction
+- redirect after successful POST
+
+Do not allow a user to create batch settings for another user's lottery.
+
+Do not accept raw settings from the browser as trusted source of truth.
+
+The server must rebuild the recommended batch from saved evidence and the selected lottery_id.
+
+============================================================
+BATCH INTELLIGENCE REQUIREMENTS
+============================================================
+
+The batch must be based on real intelligence, not hardcoded examples.
+
+Use the lottery-specific Precision Lock evidence.
+
+The logic should consider:
+
+- active saved runs
+- completed scored runs
+- best completed runs
+- repeated stronger settings
+- blend percentage clustering
+- window size clustering
+- total hits
+- main hits
+- extra hits
+- average winning rank
+- top10 hits
+- top20 hits
+- missing count
+- consistency across more than one run
+- current Recommendation Level
+- current Precision Progress level
+
+If one outlier run produced the best result but no repeated support exists, do not build a narrow batch around it.
+
+Instead show:
+
+"The best result is promising, but it has not repeated enough yet to build a Precision Lock batch. Save more scored runs for this lottery."
+
+============================================================
+BATCH AND RECOMMENDED NEXT SETTINGS RUN RELATIONSHIP
+============================================================
+
+Do not let the single Recommended Next Settings Run and the Recommended SKAI Batch Test conflict.
+
+The single Recommended Next Settings Run is the simplest next action.
+
+The Recommended SKAI Batch Test is the stronger option when the user wants SKAI to test several points inside the current range.
+
+Explain the difference:
+
+Recommended Next Settings Run:
+"Best if you want one clean next test."
+
+Recommended SKAI Batch Test:
+"Best if you want SKAI to test several points inside the current Precision Lock range."
+
+Both must use the same evidence and same test variable.
+
+If the single recommendation says test blend, the batch should also test blend.
+
+If the single recommendation says test window size, the batch should also test window size.
+
+Do not recommend one variable in one section and a different variable in the batch section unless the explanation clearly justifies it.
+
+============================================================
+EVIDENCE-BASED ADVISORY LANGUAGE
+============================================================
+
+Upgrade generic advice into evidence-based advice wherever possible.
+
+Avoid vague statements like:
+
+"This method is leading because it has the strongest active saved support right now."
+
+Improve with actual available evidence.
+
+Example:
+
+"SKAI is leading for this lottery because it has 12 active saved scored runs, the best completed result on May 1, 2026, and repeated stronger results in the 58 to 68 range."
+
+Only include facts that are actually available in the data.
+
+Use any available evidence:
+
+- method name
+- active saved run count
+- completed scored run count
+- completed draw count
+- best draw date
+- best main hits
+- best extra hits
+- best total hits
+- strongest blend range
+- average rank
+- top10 hits
+- top20 hits
+- repeated stronger settings
+- confidence stage
+- recommendation level
+- Precision Progress level
+- sample size
+
+If evidence is missing, say what is missing.
+
+Example:
+
+"This is still early. LottoExpert needs more saved scored runs for this lottery before it can narrow confidently."
+
+Do not invent proof.
+
+Do not claim "best" unless the data supports it.
+
+============================================================
+CONSISTENCY LOGIC REQUIREMENT
+============================================================
+
+The goal is to identify the most consistent settings, not just the single luckiest run.
+
+The advisory logic should consider both:
+
+1. Best result
+2. Repeated consistency
+
+Where available, use:
+
+- repeated strong runs
+- lower average winning rank
+- top10 hits
+- top20 hits
+- total hits
+- main hits
+- extra hits
+- missing count
+- consistency across multiple completed draws
+- same or similar settings appearing in stronger runs
+
+Avoid recommending a setting solely because of one outlier if there is not enough supporting evidence.
+
+If one run is best but the pattern is not repeated, say:
+
+"This run is the best single result, but the setting is not proven yet because it has not repeated across enough saved scored runs."
+
+If multiple runs cluster around similar settings, say:
+
+"These stronger runs are clustering around this settings range, so this is the current area to test carefully."
+
+============================================================
+PRECISION LOCK DATA LOGIC
+============================================================
+
+Review the current Precision Lock calculation function.
+
+If the current function already filters by lottery, active saved runs, and matched performance rows, preserve that logic.
+
+Strengthen it only where needed.
+
+The function should:
+
+1. Receive only the current lottery's active saved rows and matching scored performance rows.
+2. Ignore unsaved-only performance history.
+3. Ignore deleted runs.
+4. Ignore deleted lotteries.
+5. Ignore rows that cannot be matched back to active saved evidence.
+6. Select the best-supported setting basis.
+7. Determine stage based on sample size and consistency.
+8. Determine Recommendation Level based on sample size, draw count, consistency, and repeat support.
+9. Determine Precision Progress level based on evidence, consistency, and next milestone.
+10. Calculate range from actual setting values in stronger runs.
+11. Avoid fake precision with too few runs.
+12. Return evidence summary text that can be displayed.
+13. Return Keep Locked items.
+14. Return Test Next item.
+15. Return Not Proven Yet items.
+16. Return Recommended SKAI Batch Test data if evidence supports it.
+17. Return next milestone text.
+
+If multiple setting families are present, prioritize:
+
+1. blend percentage or SKAI blend AI percent when available
+2. SKAI window size
+3. draws analyzed
+4. mode or training style
+5. method-specific settings
+
+Do not force everything into blend percentage if the evidence is stronger for another setting.
+
+============================================================
+VISUAL RUN COMPARISON
+============================================================
+
+Keep Visual Run Comparison prominent.
+
+Do not replace it with plain tables.
+
+Use the original ball styling and colors from the original MyLottoExpert file.
+
+Do not invent new ball styles.
+
+Verify it still shows:
+
+- predicted main balls
+- predicted extra balls
+- actual main balls
+- actual extra balls
+- matched balls
+- main hits
+- extra hits
+- total hits
+- best run first
+- duplicate rows merged
+- delete run action where already supported
+- use for future advice
+- keep for review
+- do not use for advice
+
+If it is working, do not rewrite it.
+
+Only improve labels, spacing, or clarity if safe.
+
+============================================================
+EXTRA BONUS BALLS
+============================================================
+
+Do not break extra ball display.
+
+Use the original file behavior for actual draw extraction and extra ball extraction.
+
+EuroMillions:
+
+- actual draw must show 5 main balls plus 2 correct extra balls
+- extra balls must be Lucky Stars
+- extra balls must not be main numbers like 29, 46, or 49
+- the same actual draw must display consistently across all saved prediction rows for the same draw date
+
+Powerball:
+
+- actual draw must show 5 main balls plus 1 correct extra ball
+
+Mega Millions:
+
+- actual draw must show 5 main balls plus 1 correct extra ball
+
+Actual extra balls must come from the official draw result source, not from predicted extra_ball_numbers.
+
+Do not change this logic unless it is broken.
+
+============================================================
+FAVORITE LOTTERIES
+============================================================
+
+Keep Favorite Lotteries restored at the bottom.
+
+There should be one global Favorite Lotteries section.
+
+It must use original behavior and show:
+
+- logo
+- lottery name
+- location
+- latest draw date
+- latest draw numbers
+- extra balls when applicable
+- next draw date
+- jackpot if available
+- View Results or equivalent original action
+
+Do not replace this with placeholders.
+Do not duplicate it.
+Do not move it into every lottery card.
+
+============================================================
+FAVORITE WHEELING SYSTEMS
+============================================================
+
+Keep Favorite Wheeling Systems restored at the bottom.
+
+There should be one global Favorite Wheeling Systems section.
+
+It must use original behavior and show:
+
+- saved favorite systems
+- pick size
+- number range
+- assurance
+- games or lines
+- Open in Wheel Builder
+- Remove Favorite
+
+Do not replace this with placeholders.
+Do not duplicate it.
+Do not move it into every lottery card unless the current file already safely has lottery-specific compatible wheel information.
+
+============================================================
+LOTTERY CARD FLOW
+============================================================
+
+Inside each lottery card, the user experience should flow like this:
+
+1. What this lottery is telling you
+2. Recommendation Level
+3. Precision Progress
+4. SKAI Precision Lock
+5. Keep Locked / Test Next / Not Proven Yet
+6. Recommended Next Settings Run
+7. Recommended SKAI Batch Test
+8. Visual Run Comparison
+9. Run Selection for Better Advice
+10. Saved Predictions
+11. Saved Numbers to Play
+12. Saved Settings
+13. Advanced Details
+
+Do not scatter lottery-specific information across the page.
+
+Global bottom sections allowed:
+
+- Favorite Lotteries
+- Favorite Wheeling Systems
+
+============================================================
+BEGINNER, STANDARD, ADVANCED MODES
+============================================================
+
+Keep these modes working.
+
+Beginner mode:
+
+- plain English
+- no technical paper language
+- show the main decision
+- show Recommendation Level
+- show Precision Progress
+- show SKAI Precision Lock
+- show Keep Locked / Test Next / Not Proven Yet
+- show Recommended Next Settings Run
+- show Recommended SKAI Batch Test when available
+- show Visual Run Comparison
+- hide raw metrics by default
+- avoid the word hyperparameter
+
+Beginner Precision Progress explanation:
+
+"Precision Progress shows how much useful evidence this lottery has built. As you save and score more runs, LottoExpert can move this lottery closer to a stronger recommendation."
+
+Beginner batch explanation:
+
+"This creates a small group of SKAI runs for this lottery. Each run keeps your strongest settings the same and changes only one number in the range LottoExpert is testing. That makes it easier to see which setting is really helping."
+
+Standard mode:
+
+- balanced detail
+- show evidence summary
+- show Precision Progress
+- show Precision Lock range
+- show recommended test
+- show batch test when available
+- show visual proof
+- advanced metrics collapsed
+
+Advanced mode:
+
+- show proof history
+- show settings details
+- show raw metrics
+- show batch details
+- show Precision Progress evidence
+- show sample count
+- show selected variable
+- show selected range
+- show batch spacing
+- show scoring reason
+- show control run
+- show evidence confidence
+- show why other settings are locked
+- still keep Precision Lock and visual proof prominent
+
+============================================================
+DUPLICATION CONTROL
+============================================================
+
+Search for duplicate visible sections.
+
+There should not be multiple competing versions of:
+
+- advisory center
+- command center
+- draw results comparison
+- saved predictions
+- saved settings
+- saved numbers
+- favorite lotteries
+- favorite wheeling systems
+- SKAI Precision Lock
+- Recommendation Level
+- Precision Progress
+- Recommended SKAI Batch Test
+
+Keep exactly one global Favorite Lotteries section.
+Keep exactly one global Favorite Wheeling Systems section.
+
+Lottery-specific advice belongs inside each lottery card.
+
+If old visible advisory sections remain outside the cards and duplicate the same function, hide or remove the duplicate visible output only.
+
+Preserve helper logic if it is needed.
+
+============================================================
+WORLD-CLASS UX STANDARD
+============================================================
+
+The page must feel:
+
+- clean
+- premium
+- calm
+- confident
+- organized
+- easy to scan
+- beginner-friendly
+- evidence-based
+- motivating
+- not noisy
+- not scattered
+- not like a technical paper
+- not like a gambling hype page
+
+Use clear headings.
+
+Use short explanatory paragraphs.
+
+Use compact evidence cards.
+
+Use strong visual hierarchy.
+
+Use the SKAI brand colors carefully:
+
+- Deep Navy: #0A1A33
+- SKAI Blue: #1C66FF
+- Sky Gray: #EFEFF5
+- Soft Slate: #7F8DAA
+- Success Green: #20C997
+- Caution Amber: #F5A623
+
+Do not place strong gradients behind long body text.
+
+Maintain WCAG AA readable contrast.
+
+Do not add icons or glyphs.
+
+============================================================
+ACCEPTANCE TESTS
+============================================================
+
+Before returning the file, verify every item below.
+
+Compliance:
+
+1. PHP syntax passes.
+2. JavaScript remains ES5 only.
+3. No JavaScript backticks exist.
+4. No let exists.
+5. No const exists.
+6. No arrow functions exist.
+7. No optional chaining exists.
+8. No nullish coalescing exists.
+9. No async or await exists.
+10. No decorative emoji or glyphs exist.
+11. No decorative icon entities exist.
+12. No smart quotes exist.
+13. No en dash or em dash exists.
+14. No ellipsis character exists.
+15. No non-breaking spaces were added.
+16. No CSS pseudo-element uses decorative glyph content.
+17. No count() call can receive null.
+18. Joomla and Sorcerer [[ ]] tags remain untouched.
+
+Security:
+
+19. Existing save actions still use POST and CSRF.
+20. Existing delete actions still use POST and CSRF.
+21. New batch creation action uses POST and CSRF.
+22. Ownership checks remain.
+23. Demo mode checks remain.
+24. No raw user input is interpolated into SQL.
+25. The server rebuilds batch settings from saved evidence instead of trusting raw browser settings.
+
+Working behavior:
+
+26. Expand and collapse still works.
+27. Favorite Lotteries still display once at the bottom.
+28. Favorite Lottery logos still display.
+29. Favorite Wheeling Systems still display once at the bottom.
+30. Visual Run Comparison still displays balls using original styling.
+31. Visual Run Comparison still sorts best completed runs first.
+32. Duplicate visual rows remain merged.
+33. Best run so far remains easy to identify.
+
+Extra balls:
+
+34. EuroMillions actual draw shows 5 main balls and 2 correct extra balls.
+35. Powerball actual draw shows 5 main balls and 1 correct extra ball.
+36. Mega Millions actual draw shows 5 main balls and 1 correct extra ball.
+37. Extra balls are not pulled from predicted numbers.
+38. Extra balls are consistent across rows for the same draw date.
+
+Saved evidence:
+
+39. Each active saved lottery has one card.
+40. Unsaved-only lotteries do not appear as command cards.
+41. Deleted lotteries do not appear.
+42. Deleted dates do not appear.
+43. Performance history does not create visible lottery cards unless matched to active saved evidence.
+
+SKAI Precision Lock:
+
+44. Each lottery card includes SKAI Precision Lock.
+45. Each SKAI Precision Lock range is lottery-specific.
+46. No lottery uses another lottery's runs to calculate its range.
+47. No lottery uses another lottery's best method or settings as its recommendation.
+48. Each SKAI Precision Lock section says the range is based only on saved and scored runs for that lottery.
+49. If a lottery lacks enough evidence, it shows an early-stage message instead of fake precision.
+50. The range display shows what setting family the range is based on.
+51. The Precision Lock section includes Keep Locked.
+52. The Precision Lock section includes Test Next.
+53. The Precision Lock section includes Not Proven Yet.
+54. The Test Next item matches the Recommended Next Settings Run.
+55. The Test Next item matches the Recommended SKAI Batch Test when a batch is available.
+56. The recommendation explains how the test supports SKAI Precision Lock.
+
+Elite Recommendation Level:
+
+57. Each lottery card has its own Recommendation Level.
+58. Recommendation Level is calculated from that lottery only.
+59. No lottery borrows evidence from another lottery.
+60. The page does not label a lottery Elite Recommendation Level without enough evidence.
+61. The page shows what evidence is missing when a lottery is not elite yet.
+62. Every recommendation includes a plain-English reason.
+63. The page distinguishes one lucky best run from repeated consistency.
+64. The page identifies Keep Locked, Test Next, and Not Proven Yet for each lottery.
+65. The system moves each lottery toward Elite Recommendation Level over time as more saved scored evidence accumulates.
+66. Advice remains ethical and does not imply guaranteed winnings.
+
+Precision Progress:
+
+67. Each lottery card has its own Precision Progress level.
+68. Precision Progress is calculated only from that lottery's active saved scored evidence.
+69. No lottery uses another lottery's evidence for progress.
+70. Progress does not use unsaved-only runs.
+71. Progress does not use deleted runs or deleted lotteries.
+72. Progress does not advance from one lucky outlier alone.
+73. Each progress level explains why the lottery is at that level.
+74. Each progress level shows the next milestone.
+75. Progress language is motivating but not gambling hype.
+76. Progress levels connect to useful guidance, not decorative rewards.
+77. Precision Lock Candidate can unlock Recommended SKAI Batch Test when evidence supports it.
+78. Elite Recommendation Level requires repeated evidence and a clear Precision Lock range.
+79. Beginner mode explains progress in plain English.
+80. Advanced mode shows the evidence behind the progress level.
+81. No emoji, glyphs, icon entities, or special characters are used in the progress system.
+
+Recommended Next Settings Run:
+
+82. Button label is Create Recommended Next Settings Run.
+83. The section does not say Create Advisory Recipe.
+84. It explains that it copies the strongest current settings and changes only one setting.
+85. It copies the full base settings.
+86. It changes only the recommended setting.
+87. It does not create a fake recommendation when evidence is insufficient.
+88. It identifies which Precision Progress milestone it supports.
+
+Recommended SKAI Batch Test:
+
+89. Each lottery card can show its own Recommended SKAI Batch Test.
+90. The batch is based only on that lottery's saved and scored evidence.
+91. No lottery uses another lottery's evidence to create a batch.
+92. The batch does not appear when evidence is insufficient.
+93. The batch clearly explains why it is or is not available.
+94. The batch changes only one main setting variable.
+95. The batch keeps all other base settings locked.
+96. The batch includes a control run.
+97. The control run exactly copies the strongest current settings.
+98. Batch run names are clear and user-friendly.
+99. Batch size is limited and not excessive.
+100. The batch test variable matches the Recommended Next Settings Run variable.
+101. The batch explains what it is trying to prove.
+102. The batch identifies which next milestone it supports.
+103. The batch save action uses POST.
+104. The batch save action uses Joomla CSRF.
+105. The batch save action checks user ownership.
+106. The batch save action is blocked in demo mode.
+107. The server rebuilds the batch from saved evidence instead of trusting raw browser settings.
+108. Each saved batch run is a full settings record.
+109. No partial settings records are saved.
+110. Failure messages are clear.
+111. Success messages are clear.
+
+Advisory quality:
+
+112. Advice includes actual available evidence where possible.
+113. Advice does not invent evidence.
+114. Advice distinguishes best single result from repeated consistency.
+115. Advice tells the user what to keep stable.
+116. Advice tells the user what one setting to test next.
+117. Advice tells the user what is not proven yet.
+118. Advice tells the user what the next milestone is.
+119. Advice is plain English in Beginner mode.
+
+Final UX:
+
+120. The page has one clear command-card workspace per lottery.
+121. Lottery-specific information is not scattered across unrelated page sections.
+122. The page does not show multiple competing advisory centers.
+123. The page feels clearer, more premium, more motivating, and more evidence-based without breaking working functionality.
+
+============================================================
+FINAL OUTPUT REQUIREMENT
+============================================================
+
+Make only the changes needed to complete this SKAI Precision Lock intelligence, Elite Recommendation Level, Precision Progress, Recommended SKAI Batch Test, and elite polish pass.
+
+Do not do a broad rewrite.
+Do not change unrelated working code.
+Do not invent new data sources.
+Do not remove working original behavior.
+Do not return partial snippets.
+Do not return pseudocode.
+Do not leave TODO comments.
+Do not explain outside the code.
+
+Return the complete corrected production PHP file only.
