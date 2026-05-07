@@ -5243,7 +5243,7 @@ if ($__mleAction === 'remove_wheel_favorite') {
     // Detect whether this is an AJAX call (Wheeling Systems page) or a plain form POST (dashboard).
     $__isAjax = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
     // Helper: respond correctly for the request type.
-    // AJAX → JSON. Form POST → Joomla flash message + page redirect.
+    // AJAX to JSON. Form POST to Joomla flash message plus page redirect.
     $__removeRedirectPath = \Joomla\CMS\Uri\Uri::getInstance()->getPath();
 
     if ($app->input->getMethod() !== 'POST') {
@@ -12135,7 +12135,7 @@ html[data-mle-mode="standard"] .mle-quick-nav__advanced{display:none !important;
   .mle-elite-cockpit .mle-lottery-toggle,
   .mle-elite-cockpit .mle-section-toggle{width:100%;}
 }
-/* ── Advisory card header: run-stat chips ── */
+/* Advisory card header: run-stat chips */
 .mle-adv-run-stats{
   display:flex;
   flex-wrap:wrap;
@@ -12449,6 +12449,20 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   $__plkStagePlain = htmlspecialchars((string)($__advPLK['stage_plain'] ?? 'This lottery is still in broad testing.'), ENT_QUOTES, 'UTF-8');
   $__plkEvidenceLine = htmlspecialchars((string)($__advPLK['evidence_line'] ?? 'There are not enough saved scored runs yet to call a stronger range for this lottery.'), ENT_QUOTES, 'UTF-8');
   $__plkNextStep = htmlspecialchars((string)($__advPLK['next_step'] ?? 'Keep saving scored runs for this lottery before narrowing the range further.'), ENT_QUOTES, 'UTF-8');
+  $__plkRangeBasisRaw = 'still forming';
+  $____plkCtrlRaw = strtolower(trim((string)($__advPLK['control_label'] ?? '')));
+  if ($____plkCtrlRaw !== '' && $__plkHasRange) {
+      if (strpos($____plkCtrlRaw, 'blend') !== false) {
+          $__plkRangeBasisRaw = 'SKAI blend percentage';
+      } elseif (strpos($____plkCtrlRaw, 'window') !== false) {
+          $__plkRangeBasisRaw = 'window size';
+      } elseif (strpos($____plkCtrlRaw, 'draw') !== false) {
+          $__plkRangeBasisRaw = 'draws analyzed';
+      } else {
+          $__plkRangeBasisRaw = trim((string)($__advPLK['control_label'] ?? 'still forming'));
+      }
+  }
+  $__plkRangeBasis = htmlspecialchars($__plkRangeBasisRaw, ENT_QUOTES, 'UTF-8');
   $__plkRangeLabel = $__plkHasRange ? ((int)round($__plkRangeMin) . ' to ' . (int)round($__plkRangeMax)) : 'Still building';
   $__plkFocusLabel = ($__plkStage === 'precision_lock' && $__plkSweetMin !== null && $__plkSweetMax !== null)
       ? ((int)round($__plkSweetMin) . ' to ' . (int)round($__plkSweetMax))
@@ -12459,6 +12473,25 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   $__plkSweetLeft = ($__plkSweetMin !== null) ? round($__plkSweetMin, 1) : null;
   $__plkSweetWidth = ($__plkSweetMin !== null && $__plkSweetMax !== null) ? round(max(0.0, $__plkSweetMax - $__plkSweetMin), 1) : null;
   $__plkSweetMid = ($__plkSweetMin !== null && $__plkSweetMax !== null) ? round(($__plkSweetMin + $__plkSweetMax) / 2.0, 1) : null;
+  $__plkKeepLockedRaw = 'Keep ' . html_entity_decode($__advTopMLabel, ENT_QUOTES, 'UTF-8') . ' as the method and keep the strongest proven settings stable while you test one change at a time.';
+  if ($__advKeepSame !== '') {
+      $__plkKeepLockedRaw = html_entity_decode($__advKeepSame, ENT_QUOTES, 'UTF-8');
+  }
+  $__plkTestNextRaw = $__advHasAdv && $__advSLabelRaw !== ''
+      ? ('Change only ' . $__advSLabelRaw . ' from ' . (($__advCurrVal !== '') ? html_entity_decode($__advCurrVal, ENT_QUOTES, 'UTF-8') : 'the current value') . ' to ' . (($__advSugVal !== '') ? html_entity_decode($__advSugVal, ENT_QUOTES, 'UTF-8') : 'the recommended value') . ' in the next copied run for this lottery.')
+      : 'Keep scoring saved runs first. A recommended settings test will appear once this lottery has enough evidence.';
+  $__plkNotProvenRaw = 'Not enough saved scored runs yet for this lottery. Keep saving runs for this lottery before narrowing the range further.';
+  if ($__plkRunCount >= 5 && $__plkRunCount < 10) {
+      $__plkNotProvenRaw = 'This is still early for this lottery. The pattern is forming, but not yet stable enough to lock more settings.';
+  } elseif ($__plkRunCount >= 10 && $__plkRunCount < 20) {
+      $__plkNotProvenRaw = 'This lottery is showing a better range, but more repeated scored runs are still needed before stronger lock decisions.';
+  } elseif ($__plkRunCount >= 20 && !$__advHasAdv) {
+      $__plkNotProvenRaw = 'The range is narrowing, but LottoExpert still needs a clearer repeated setting difference before recommending the next single-change test.';
+  }
+  $__plkKeepLocked = htmlspecialchars($__plkKeepLockedRaw, ENT_QUOTES, 'UTF-8');
+  $__plkTestNext = htmlspecialchars($__plkTestNextRaw, ENT_QUOTES, 'UTF-8');
+  $__plkNotProven = htmlspecialchars($__plkNotProvenRaw, ENT_QUOTES, 'UTF-8');
+  unset($____plkCtrlRaw);
 ?>
 <div class="mle-advisory-card mle-optimization-card" id="mle-adv-card-<?php echo $__advLid; ?>" data-lottery-id="<?php echo $__advLid; ?>">
   <div class="mle-advisory-card__collapsed">
@@ -12572,9 +12605,9 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
           <small><?php echo $__plkStagePlain; ?></small>
         </div>
         <div class="mle-plk-fact">
-          <span>Strongest range</span>
-          <strong><?php echo htmlspecialchars($__plkFocusLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
-          <small><?php echo $__plkCtrlLabel; ?> for this lottery</small>
+          <span>Range basis</span>
+          <strong><?php echo $__plkRangeBasis; ?></strong>
+          <small>Strongest range for this lottery: <?php echo htmlspecialchars($__plkFocusLabel, ENT_QUOTES, 'UTF-8'); ?></small>
         </div>
         <div class="mle-plk-fact">
           <span>Evidence</span>
@@ -12634,6 +12667,7 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
           <span>100</span>
         </div>
         <div class="mle-plk-zone-info">
+          <span class="mle-plk-zone-basis">Range basis: <?php echo $__plkRangeBasis; ?></span>
           <?php if ($__plkStage === 'precision_lock' && $__plkSweetLeft !== null): ?>
           <span class="mle-plk-zone-badge mle-plk-zone-badge--sweet">Sweet spot for this lottery: <?php echo (int)round($__plkSweetMin); ?> to <?php echo (int)round($__plkSweetMax); ?></span>
           <?php elseif ($__plkStage === 'narrowing'): ?>
@@ -12644,6 +12678,23 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         </div>
       </div>
       <?php endif; ?>
+      <div class="mle-card-list-grid mle-plk-guidance-grid" aria-label="SKAI Precision Lock guidance for this lottery">
+        <div class="mle-mini-card">
+          <strong>Keep Locked</strong>
+          <span>What to keep stable right now</span>
+          <p><?php echo $__plkKeepLocked; ?></p>
+        </div>
+        <div class="mle-mini-card">
+          <strong>Test Next</strong>
+          <span>One controlled test for this lottery</span>
+          <p><?php echo $__plkTestNext; ?></p>
+        </div>
+        <div class="mle-mini-card">
+          <strong>Not Proven Yet</strong>
+          <span>What still needs more evidence</span>
+          <p><?php echo $__plkNotProven; ?></p>
+        </div>
+      </div>
       <p class="mle-precision-lock__summary"><?php echo $__plkSummary; ?></p>
     </section>
 
@@ -12662,6 +12713,7 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
         <div><span>Recommended value</span><strong><?php echo $__advSugVal !== '' ? $__advSugVal : 'Not available'; ?></strong></div>
         <div class="mle-next-settings-run__wide"><span>Why this change</span><strong><?php echo $__advWhy !== '' ? $__advWhy : 'LottoExpert does not have enough evidence yet to recommend a safe setting change for this lottery.'; ?></strong></div>
         <div class="mle-next-settings-run__wide"><span>What this test is trying to prove</span><strong><?php echo $__advHasAdv && $__advSLabel !== '' ? 'Whether changing ' . $__advSLabel . ' from ' . ($__advCurrVal !== '' ? $__advCurrVal : 'the current value') . ' to ' . ($__advSugVal !== '' ? $__advSugVal : 'the recommended value') . ' improves consistency while the rest of this lottery\'s settings stay the same.' : 'Whether one careful setting change improves consistency without disturbing the settings already working.'; ?></strong></div>
+        <div class="mle-next-settings-run__wide"><span>How this supports SKAI Precision Lock</span><strong><?php echo $__advHasAdv ? 'This one-setting test checks whether this lottery moves closer to its current SKAI Precision Lock range while keeping the strongest settings stable.' : 'Keep scoring saved runs first. A recommended settings test will appear once this lottery has enough evidence.'; ?></strong></div>
       </div>
       <?php if (!MLE_DEMO_MODE && $__advHasAdv && $__advBaseRunId > 0): ?>
       <form method="post" class="mle-next-settings-run__form">
@@ -13484,8 +13536,12 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
   box-shadow:0 8px 18px rgba(10,26,51,.22);
 }
 .mle-precision-lock__focus-banner::before{
-  content:'\25CF';
-  color:#20C997;
+  content:'';
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  display:inline-block;
+  background:#20C997;
   animation:mle-plk-pulse 1.4s ease-in-out infinite;
 }
 .mle-precision-lock__eyebrow{
@@ -13668,6 +13724,21 @@ $__mleAdvCards  = (array)($__mleAdvData['cards'] ?? array());
 .mle-plk-zone-info{
   text-align:center;
   margin-top:6px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+}
+.mle-plk-zone-basis{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 12px;
+  border-radius:999px;
+  border:1px solid rgba(127,141,170,.25);
+  background:#fff;
+  color:#334155;
+  font-size:12px;
+  font-weight:700;
 }
 .mle-plk-zone-badge{
   display:inline-block;
@@ -30151,7 +30222,7 @@ $__mleWheelFavCsrfField   = '<input type="hidden" name="' . htmlspecialchars($__
 <!-- /MLE COMMAND CARD FINAL INTERACTION REPAIR -->
 
 <script>
-/* ── Advisory-card print  (ES5, no external dependencies) ── */
+/* Advisory-card print (ES5, no external dependencies) */
 function mleAdvisoryCardPrint(btn) {
   var LT = '\u003c', GT = '\u003e';
   function esc(s) {
